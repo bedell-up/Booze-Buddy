@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pydantic
+requests
+sqlalchemy
+pillow
+opencv-python
+google-cloud-vision
+python-multipart
+beautifulsoup4
