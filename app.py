@@ -13,6 +13,13 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session, relationship
 from PIL import Image
 
+vision_available = False
+try:
+    from google.cloud import vision
+    vision_available = True
+except ImportError:
+    print("Google Cloud Vision not available. Image recognition features will be disabled.")
+
 # Set up Google Cloud credentials from environment variable if available
 if 'GOOGLE_APPLICATION_CREDENTIALS_JSON' in os.environ:
     try:
