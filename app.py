@@ -13,12 +13,23 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session, relationship
 from PIL import Image
 
-# Optional: Import Google Cloud Vision if available
-try:
-    from google.cloud import vision
-    vision_available = True
-except ImportError:
-    vision_available = False
+# Set up Google Cloud credentials from environment variable if available
+if 'GOOGLE_APPLICATION_CREDENTIALS_JSON' in os.environ:
+    try:
+        # Get the JSON content from environment variable
+        credentials_json = os.environ['GOOGLE_APPLICATION_CREDENTIALS_JSON']
+        
+        # Create a temporary file to store credentials
+        import tempfile
+        fd, temp_credentials_file = tempfile.mkstemp()
+        with open(temp_credentials_file, 'w') as f:
+            f.write(credentials_json)
+        
+        # Set the environment variable to the temporary file path
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = temp_credentials_file
+        print("Successfully set up Google Cloud credentials from environment variable")
+    except Exception as e:
+        print(f"Error setting up Google Cloud credentials: {e}")
 
 # Database setup
 DATABASE_URL = os.environ.get("DATABASE_URL")
