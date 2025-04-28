@@ -20,6 +20,9 @@ try:
 except ImportError:
     print("Google Cloud Vision not available. Image recognition features will be disabled.")
 
+# Define vision_available before trying to import
+vision_available = False
+
 # Set up Google Cloud credentials from environment variable if available
 if 'GOOGLE_APPLICATION_CREDENTIALS_JSON' in os.environ:
     try:
@@ -27,7 +30,6 @@ if 'GOOGLE_APPLICATION_CREDENTIALS_JSON' in os.environ:
         credentials_json = os.environ['GOOGLE_APPLICATION_CREDENTIALS_JSON']
         
         # Create a temporary file to store credentials
-        import tempfile
         fd, temp_credentials_file = tempfile.mkstemp()
         with open(temp_credentials_file, 'w') as f:
             f.write(credentials_json)
@@ -35,8 +37,24 @@ if 'GOOGLE_APPLICATION_CREDENTIALS_JSON' in os.environ:
         # Set the environment variable to the temporary file path
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = temp_credentials_file
         print("Successfully set up Google Cloud credentials from environment variable")
+        
+        # Now try to import vision after credentials are set up
+        try:
+            from google.cloud import vision
+            vision_available = True
+            print("Google Cloud Vision API imported successfully")
+        except ImportError:
+            print("Failed to import Google Cloud Vision API")
     except Exception as e:
         print(f"Error setting up Google Cloud credentials: {e}")
+else:
+    print("No Google Cloud credentials found in environment variables")
+    try:
+        from google.cloud import vision
+        vision_available = True
+        print("Google Cloud Vision API imported successfully (using default credentials)")
+    except ImportError:
+        print("Failed to import Google Cloud Vision API")
 
 # Database setup
 DATABASE_URL = os.environ.get("DATABASE_URL")
