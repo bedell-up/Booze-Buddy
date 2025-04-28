@@ -4,6 +4,7 @@ import time
 import requests
 import json
 import base64
+import tempfile
 from typing import List, Dict, Set, Optional, Any
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Body, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
