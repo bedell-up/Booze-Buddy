@@ -289,7 +289,7 @@ class BarBuddy:
 
 # Initialize FastAPI
 app = FastAPI(
-    title="Bar Buddy API",
+    title="Booze Buddy API",
     description="API for managing bar inventory and finding cocktail recipes",
     version="1.0.0"
 )
@@ -297,7 +297,7 @@ app = FastAPI(
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
+    allow_origins=["https://bedell-up.github.io/Booze-Buddy/"],  # Replace with your actual GitHub Pages URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
