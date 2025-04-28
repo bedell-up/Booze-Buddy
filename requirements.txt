@@ -1,6 +1,8 @@
 fastapi
 uvicorn
-google-cloud-vision
 python-multipart
 requests
 pillow
+google-cloud-vision
+sqlalchemy
+psycopg2-binary
