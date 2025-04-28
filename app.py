@@ -2,6 +2,12 @@ from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from typing import List, Dict, Set, Optional, Any
+import os
+from sqlalchemy import create_engine, Column, String, Integer, Boolean, ForeignKey
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session, relationship
+from fastapi import Depends, HTTPException, status
+from pydantic import BaseModel
 import io
 import json
 import os
@@ -40,7 +46,7 @@ class CocktailDetail(BaseModel):
 class SpiritRequest(BaseModel):
     spirit: str
 
-class BarBuddy:
+class BoozeBuddy:
     def __init__(self):
         # Cocktail API setup
         self.api_base_url = "https://www.thecocktaildb.com/api/json/v1/1/"
@@ -302,26 +308,56 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# Database setup
+DATABASE_URL = os.environ.get("DATABASE_URL")
+if not DATABASE_URL:
+    raise ValueError("No DATABASE_URL environment variable found")
 
-# Initialize Bar Buddy
-bar_buddy = BarBuddy()
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+# Define SQLAlchemy models
+class InventoryItem(Base):
+    __tablename__ = "inventory_items"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    
+    # If you want to add user support later:
+    # user_id = Column(Integer, ForeignKey("users.id"))
+    # user = relationship("User", back_populates="inventory_items")
+
+# Create tables
+Base.metadata.create_all(bind=engine)
+
+# Database dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+        
+# Initialize Booze Buddy
+booze_buddy = BoozeBuddy()
 
 # Add some sample inventory for testing
 sample_items = ["vodka", "rum", "gin", "tequila", "whiskey", "lime juice", "simple syrup"]
 for item in sample_items:
-    bar_buddy.inventory.add(item)
+    booze_buddy.inventory.add(item)
 
 # API Routes
 @app.get("/")
 async def root():
-    return {"message": "Welcome to Bar Buddy API"}
+    return {"message": "Welcome to Booze Buddy API"}
 
 @app.post("/analyze-image/", response_model=Dict[str, List])
 async def analyze_image(file: UploadFile = File(...)):
     """Analyze an image to detect alcohol bottles."""
     try:
         contents = await file.read()
-        detected_alcohol = bar_buddy.detect_labels_in_image(contents)
+        detected_alcohol = booze_buddy.detect_labels_in_image(contents)
         
         # Format the response
         response = {"detected": []}
@@ -335,40 +371,122 @@ async def analyze_image(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# Get inventory
 @app.get("/inventory/", response_model=InventoryResponse)
-async def get_inventory():
-    """Get the current bar inventory."""
-    return {"inventory": sorted(list(bar_buddy.inventory))}
+def get_inventory(db: Session = Depends(get_db)):
+    items = db.query(InventoryItem).all()
+    inventory_items = [item.name for item in items]
+    
+    return {
+        "inventory": sorted(inventory_items),
+        "message": f"Your bar has {len(inventory_items)} items"
+    }
 
-@app.post("/inventory/add/", response_model=InventoryResponse)
-async def add_to_inventory(item: InventoryItem):
-    """Add an item to the inventory."""
-    bar_buddy.inventory.add(item.name.lower())
-    return {"inventory": sorted(list(bar_buddy.inventory))}
+# Add to inventory
+@app.post("/inventory/", response_model=InventoryResponse)
+def add_to_inventory(item: InventoryItem, db: Session = Depends(get_db)):
+    # Check if item already exists
+    existing_item = db.query(InventoryItem).filter(InventoryItem.name == item.name.lower()).first()
+    if not existing_item:
+        db_item = InventoryItem(name=item.name.lower())
+        db.add(db_item)
+        db.commit()
+        db.refresh(db_item)
+    
+    # Return updated inventory
+    items = db.query(InventoryItem).all()
+    inventory_items = [item.name for item in items]
+    
+    return {
+        "inventory": sorted(inventory_items),
+        "message": f"Added {item.name} to your inventory"
+    }
 
-@app.post("/inventory/remove/", response_model=InventoryResponse)
-async def remove_from_inventory(item: InventoryItem):
-    """Remove an item from the inventory."""
-    if item.name.lower() in bar_buddy.inventory:
-        bar_buddy.inventory.remove(item.name.lower())
-    return {"inventory": sorted(list(bar_buddy.inventory))}
+# Remove from inventory
+@app.delete("/inventory/{item_name}", response_model=InventoryResponse)
+def remove_from_inventory(item_name: str, db: Session = Depends(get_db)):
+    item_name = item_name.lower()
+    
+    # Find and remove item
+    item = db.query(InventoryItem).filter(InventoryItem.name == item_name).first()
+    if item:
+        db.delete(item)
+        db.commit()
+        message = f"Removed {item_name} from your inventory"
+    else:
+        message = f"{item_name} is not in your inventory"
+    
+    # Return updated inventory
+    items = db.query(InventoryItem).all()
+    inventory_items = [item.name for item in items]
+    
+    return {
+        "inventory": sorted(inventory_items),
+        "message": message
+    }
+
+# Add multiple common ingredients
+@app.post("/inventory/add-common/", response_model=InventoryResponse)
+def add_common_ingredients(items: List[str] = Body(...), db: Session = Depends(get_db)):
+    for item_name in items:
+        # Check if item already exists
+        existing_item = db.query(InventoryItem).filter(InventoryItem.name == item_name.lower()).first()
+        if not existing_item:
+            db_item = InventoryItem(name=item_name.lower())
+            db.add(db_item)
+    
+    db.commit()
+    
+    # Return updated inventory
+    items = db.query(InventoryItem).all()
+    inventory_items = [item.name for item in items]
+    
+    return {
+        "inventory": sorted(inventory_items),
+        "message": f"Added common ingredients to your inventory"
+    }
+
+# Initialize demo 
+@app.post("/demo/initialize/")
+def initialize_demo(db: Session = Depends(get_db)):
+    # Clear existing inventory
+    db.query(InventoryItem).delete()
+    
+    # Add demo items
+    demo_items = ["vodka", "gin", "rum", "tequila", "triple sec", 
+                 "lime juice", "simple syrup", "orange juice", "cranberry juice"]
+    
+    for item_name in demo_items:
+        db_item = InventoryItem(name=item_name.lower())
+        db.add(db_item)
+    
+    db.commit()
+    
+    # Return updated inventory
+    items = db.query(InventoryItem).all()
+    inventory_items = [item.name for item in items]
+    
+    return {
+        "message": "Demo initialized with sample inventory",
+        "inventory": sorted(inventory_items)
+    }
 
 @app.get("/cocktails/available/", response_model=CocktailsResponse)
 async def available_cocktails():
     """Get all cocktails that can be made with the current inventory."""
-    cocktails = bar_buddy.get_available_cocktails()
+    cocktails = booze_buddy.get_available_cocktails()
     return cocktails
 
 @app.post("/cocktails/by-spirit/", response_model=CocktailsResponse)
 async def cocktails_by_spirit(request: SpiritRequest):
     """Find cocktails that use a specific spirit."""
-    cocktails = bar_buddy.find_cocktails_by_spirit(request.spirit.lower())
+    cocktails = booze_buddy.find_cocktails_by_spirit(request.spirit.lower())
     return cocktails
 
 @app.get("/cocktails/details/{cocktail_id}", response_model=CocktailDetail)
 async def cocktail_details(cocktail_id: str):
     """Get detailed information about a specific cocktail."""
-    details = bar_buddy.get_cocktail_details(cocktail_id)
+    details = booze_buddy.get_cocktail_details(cocktail_id)
     if not details:
         raise HTTPException(status_code=404, detail="Cocktail not found")
     
@@ -386,7 +504,7 @@ async def cocktail_details(cocktail_id: str):
     # Check missing ingredients
     missing = []
     for ingredient_name in ingredients.keys():
-        if ingredient_name not in bar_buddy.inventory:
+        if ingredient_name not in booze_buddy.inventory:
             missing.append(ingredient_name)
     
     # Create response
@@ -404,7 +522,7 @@ async def cocktail_details(cocktail_id: str):
 @app.post("/cocktails/search/", response_model=List[CocktailSummary])
 async def search_cocktails(query: str = Body(..., embed=True)):
     """Search for cocktails by name."""
-    data = bar_buddy.api_request("search.php", {"s": query})
+    data = booze_buddy.api_request("search.php", {"s": query})
     if not data or not data.get("drinks"):
         return []
     
@@ -420,7 +538,7 @@ async def search_cocktails(query: str = Body(..., embed=True)):
         # Check missing ingredients
         missing = []
         for ingredient in ingredients:
-            if ingredient not in bar_buddy.inventory:
+            if ingredient not in booze_buddy.inventory:
                 missing.append(ingredient)
         
         # Create cocktail summary
