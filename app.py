@@ -471,85 +471,58 @@ def initialize_demo(db: Session = Depends(get_db)):
         "inventory": sorted(inventory_items)
     }
 
-@app.get("/cocktails/available/", response_model=CocktailsResponse)
-async def available_cocktails():
-    """Get all cocktails that can be made with the current inventory."""
-    cocktails = booze_buddy.get_available_cocktails()
-    return cocktails
-
-@app.post("/cocktails/by-spirit/", response_model=CocktailsResponse)
-async def cocktails_by_spirit(request: SpiritRequest):
-    """Find cocktails that use a specific spirit."""
-    cocktails = booze_buddy.find_cocktails_by_spirit(request.spirit.lower())
-    return cocktails
-
-@app.get("/cocktails/details/{cocktail_id}", response_model=CocktailDetail)
-async def cocktail_details(cocktail_id: str):
-    """Get detailed information about a specific cocktail."""
-    details = booze_buddy.get_cocktail_details(cocktail_id)
-    if not details:
-        raise HTTPException(status_code=404, detail="Cocktail not found")
+def get_available_cocktails(self, db_inventory: List[str]) -> Dict[str, Dict]:
+    """Find cocktails that can be made with the current inventory."""
+    if not db_inventory:
+        return {}
+            
+    available_cocktails = {}
     
-    # Extract ingredients and measures
-    ingredients = {}
-    for i in range(1, 16):
-        ing_key = f"strIngredient{i}"
-        meas_key = f"strMeasure{i}"
+    # For each ingredient in inventory, find cocktails
+    for ingredient in db_inventory:
+        cocktails = self.search_cocktails_by_ingredient(ingredient)
         
-        if details.get(ing_key):
-            ingredient_name = details[ing_key].lower()
-            measure = details.get(meas_key, "").strip() if details.get(meas_key) else ""
-            ingredients[ingredient_name] = measure
-    
-    # Check missing ingredients
-    missing = []
-    for ingredient_name in ingredients.keys():
-        if ingredient_name not in booze_buddy.inventory:
-            missing.append(ingredient_name)
-    
-    # Create response
-    return CocktailDetail(
-        id=cocktail_id,
-        name=details["strDrink"],
-        instructions=details["strInstructions"],
-        glass=details["strGlass"],
-        ingredients=ingredients,
-        image_url=details["strDrinkThumb"],
-        can_make=len(missing) == 0,
-        missing=missing
-    )
-
-@app.post("/cocktails/search/", response_model=List[CocktailSummary])
-async def search_cocktails(query: str = Body(..., embed=True)):
-    """Search for cocktails by name."""
-    data = booze_buddy.api_request("search.php", {"s": query})
-    if not data or not data.get("drinks"):
-        return []
-    
-    results = []
-    for drink in data["drinks"]:
-        # Extract ingredients
-        ingredients = []
-        for i in range(1, 16):
-            ing_key = f"strIngredient{i}"
-            if drink.get(ing_key):
-                ingredients.append(drink[ing_key].lower())
-        
-        # Check missing ingredients
-        missing = []
-        for ingredient in ingredients:
-            if ingredient not in booze_buddy.inventory:
-                missing.append(ingredient)
-        
-        # Create cocktail summary
-        cocktail_summary = CocktailSummary(
-            id=drink["idDrink"],
-            name=drink["strDrink"],
-            can_make=len(missing) == 0,
-            missing=missing
-        )
-        
-        results.append(cocktail_summary)
+        for cocktail in cocktails:
+            cocktail_id = cocktail["idDrink"]
+            
+            # Skip if we've already processed this cocktail
+            if cocktail_id in available_cocktails:
+                continue
+            
+            # Get full details including all ingredients
+            details = self.get_cocktail_details(cocktail_id)
+            if not details:
+                continue
+            
+            # Extract all ingredients and measures
+            ingredients = {}
+            for i in range(1, 16):  # API supports up to 15 ingredients
+                ing_key = f"strIngredient{i}"
+                meas_key = f"strMeasure{i}"
+                
+                if details.get(ing_key):
+                    ingredient_name = details[ing_key].lower()
+                    measure = details.get(meas_key, "").strip() if details.get(meas_key) else ""
+                    ingredients[ingredient_name] = measure
+            
+            # Check if we have all ingredients
+            missing = set()
+            for ingredient_name in ingredients.keys():
+                if ingredient_name.lower() not in db_inventory:
+                    missing.add(ingredient_name)
+            
+            # Store the cocktail with its missing ingredients
+            available_cocktails[cocktail_id] = {
+                "name": details["strDrink"],
+                "image": details["strDrinkThumb"],
+                "instructions": details["strInstructions"],
+                "glass": details["strGlass"],
+                "ingredients": ingredients,
+                "missing": missing,
+                "can_make": len(missing) == 0
+            }
+                
+    return available_cocktails
     
     return results
 
