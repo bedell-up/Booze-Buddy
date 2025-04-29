@@ -9,3 +9,4 @@ psycopg2-binary
 pydantic[email]
 passlib[bcrypt]
 python-jose[cryptography]
+aiofiles  # Important for serving static files
