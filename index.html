@@ -1107,6 +1107,66 @@
             showSection(inventorySection);
             loadInventory();
         });
+
+        // Login function
+async function login(username, password) {
+    try {
+        const formData = new FormData();
+        formData.append('username', username);
+        formData.append('password', password);
+        
+        const response = await fetch(`${API_BASE_URL}/token`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!response.ok) {
+            throw new Error('Login failed');
+        }
+        
+        const data = await response.json();
+        
+        // Save token to localStorage
+        localStorage.setItem('authToken', data.access_token);
+        
+        return true;
+    } catch (error) {
+        console.error('Login error:', error);
+        return false;
+    }
+}
+
+// Add authentication header to requests
+function getAuthHeader() {
+    const token = localStorage.getItem('authToken');
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
+
+// Example of authenticated request
+async function getInventory() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/inventory/`, {
+            method: 'GET',
+            headers: {
+                ...getAuthHeader()
+            }
+        });
+        
+        if (!response.ok) {
+            if (response.status === 401) {
+                // Handle unauthorized - redirect to login
+                showLoginForm();
+                return null;
+            }
+            throw new Error('Failed to get inventory');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Error getting inventory:', error);
+        return null;
+    }
+}
     </script>
 </body>
 </html>

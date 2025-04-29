@@ -6,3 +6,6 @@ pillow
 google-cloud-vision
 sqlalchemy
 psycopg2-binary
+passlib[bcrypt]
+python-jose[cryptography]
+python-multipart
