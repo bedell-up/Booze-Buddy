@@ -947,7 +947,18 @@ def debug_files():
         "static_exists": static_exists,
         "static_files": static_files
     }
-
+@app.get("/login", response_class=HTMLResponse)
+async def read_login():
+    import os
+    print(f"Current directory: {os.getcwd()}")
+    print(f"Static dir exists: {os.path.exists('static')}")
+    if os.path.exists('static/login.html'):
+        print("Found login.html in static directory")
+    elif os.path.exists('login.html'):
+        print("Found login.html in root directory")
+    else:
+        print("login.html not found")
+        
 # Run the application with uvicorn
 if __name__ == "__main__":
     import uvicorn
