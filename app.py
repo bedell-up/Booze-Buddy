@@ -869,6 +869,17 @@ def search_cocktails(
     }
 
 # For demo purposes, add some items to the inventory
+@app.get("/health")
+def health_check():
+    """Check if the API is running and return basic information."""
+    return {
+        "status": "healthy",
+        "version": "1.0.0",
+        "timestamp": datetime.utcnow().isoformat(),
+        "service": "Booze Buddy API",
+        "environment": os.environ.get("ENVIRONMENT", "production")
+    }
+
 @app.post("/demo/initialize/")
 def initialize_demo(
     current_user: User = Depends(get_current_user),
