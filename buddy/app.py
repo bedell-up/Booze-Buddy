@@ -12,6 +12,8 @@ from datetime import datetime, timedelta
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Body, Query, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse, FileResponse
 
 # Pydantic imports
 from pydantic import BaseModel, EmailStr
@@ -230,6 +232,19 @@ app = FastAPI(
     description="API for managing your bar inventory and discovering cocktails",
     version="1.0.0"
 )
+
+# Serve static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Root route to serve the main application
+@app.get("/", response_class=HTMLResponse)
+async def read_root():
+    return FileResponse("static/index.html")
+
+# Login page
+@app.get("/login", response_class=HTMLResponse)
+async def read_login():
+    return FileResponse("static/login.html")
 
 # Enable CORS
 app.add_middleware(
@@ -871,13 +886,12 @@ def search_cocktails(
 # For demo purposes, add some items to the inventory
 @app.get("/health")
 def health_check():
-    """Check if the API is running and return basic information."""
+    """Check if the API is running."""
     return {
         "status": "healthy",
         "version": "1.0.0",
         "timestamp": datetime.utcnow().isoformat(),
-        "service": "Booze Buddy API",
-        "environment": os.environ.get("ENVIRONMENT", "production")
+        "service": "Booze Buddy API"
     }
 
 @app.post("/demo/initialize/")
