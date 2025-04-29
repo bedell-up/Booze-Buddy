@@ -6,27 +6,35 @@ import json
 import base64
 import tempfile
 from typing import List, Dict, Set, Optional, Any
-from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Body, Query, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from sqlalchemy import create_engine, Column, String, Integer, Boolean, ForeignKey
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session, relationship
-from PIL import Image
 from datetime import datetime, timedelta
-from passlib.context import CryptContext
-from jose import JWTError, jwt
+
+# FastAPI imports
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Body, Query, Depends, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
+# Pydantic imports
+from pydantic import BaseModel, EmailStr
+
+# SQLAlchemy imports
+from sqlalchemy import create_engine, Column, String, Integer, Boolean, ForeignKey, DateTime
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session, relationship
+
+# Authentication imports
+from passlib.context import CryptContext
+from jose import JWTError, jwt
+
+# Image processing
+from PIL import Image
+
+# Google Cloud Vision (optional)
 vision_available = False
 try:
     from google.cloud import vision
     vision_available = True
 except ImportError:
     print("Google Cloud Vision not available. Image recognition features will be disabled.")
-
-# Define vision_available before trying to import
-vision_available = False
 
 # Set up Google Cloud credentials from environment variable if available
 if 'GOOGLE_APPLICATION_CREDENTIALS_JSON' in os.environ:
@@ -42,7 +50,9 @@ if 'GOOGLE_APPLICATION_CREDENTIALS_JSON' in os.environ:
         # Set the environment variable to the temporary file path
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = temp_credentials_file
         print("Successfully set up Google Cloud credentials from environment variable")
-        
+    except Exception as e:
+        print(f"Error setting up Google Cloud credentials: {e}")
+
         # Now try to import vision after credentials are set up
         try:
             from google.cloud import vision
@@ -149,6 +159,38 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 # Define SQLAlchemy models
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# Then define your SQLAlchemy models
+class User(Base):
+    __tablename__ = "users"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    email = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
+    is_active = Column(Boolean, default=True)
+    
+    # Relationship to inventory items
+    inventory_items = relationship("InventoryItem", back_populates="user")
+
+class InventoryItem(Base):
+    __tablename__ = "inventory_items"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    
+    # Add user relationship
+    user_id = Column(Integer, ForeignKey("users.id"))
+    user = relationship("User", back_populates="inventory_items")
+
+# Create tables
+Base.metadata.create_all(bind=engine)
 
 class User(Base):
     __tablename__ = "users"
