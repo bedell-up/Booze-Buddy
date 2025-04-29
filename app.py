@@ -233,8 +233,16 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Mount static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Try using a more direct approach for specific pages
+@app.get("/", response_class=HTMLResponse)
+async def read_root():
+    with open("static/index.html", "r") as f:
+        return f.read()
+
+@app.get("/login", response_class=HTMLResponse)
+async def read_login():
+    with open("static/login.html", "r") as f:
+        return f.read()
 
 # Root route to serve the main application
 @app.get("/", response_class=HTMLResponse)
@@ -258,9 +266,8 @@ app.add_middleware(
 # BoozeBuddy class for cocktail data and image detection
 class BoozeBuddy:
     def __init__(self):
-        # Cocktail API setup
-        self.api_base_url = "https://www.thecocktaildb.com/api/json/v1/1/"
-        self.api_key = "1"  # Free tier key
+        # Cocktail API setup - UPDATED for premium access
+        self.api_base_url = "https://www.thecocktaildb.com/api/json/v2/961249867/"
         
         # Vision API client
         self.vision_client = None
@@ -915,6 +922,30 @@ def initialize_demo(
     return {
         "message": "Demo initialized with sample inventory",
         "inventory": sorted(inventory_items)
+    }
+
+@app.get("/debug-files")
+def debug_files():
+    import os
+    import glob
+    
+    # Get all files in the current directory and subdirectories
+    all_files = glob.glob("**/*", recursive=True)
+    
+    # Check specifically for static directory
+    static_exists = os.path.exists("static")
+    static_files = []
+    if static_exists:
+        static_files = os.listdir("static")
+    
+    # Get the current working directory
+    cwd = os.getcwd()
+    
+    return {
+        "current_directory": cwd,
+        "all_files": all_files,
+        "static_exists": static_exists,
+        "static_files": static_files
     }
 
 # Run the application with uvicorn

@@ -1,12 +1,13 @@
-fastapi
-uvicorn
-python-multipart
-requests
-pillow
-google-cloud-vision
-sqlalchemy
-psycopg2-binary
-pydantic[email]
-passlib[bcrypt]
-python-jose[cryptography]
-aiofiles  # Important for serving static files
+fastapi==0.103.1
+uvicorn==0.23.2
+pydantic==2.3.0
+pydantic[email]==2.3.0
+sqlalchemy==2.0.20
+psycopg2-binary==2.9.7
+python-multipart==0.0.6
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]==3.3.0
+requests==2.31.0
+pillow==10.0.0
+google-cloud-vision==3.4.2
+aiofiles==23.2.1
