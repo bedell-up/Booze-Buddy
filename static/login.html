@@ -220,8 +220,8 @@
     </footer>
     
     <script>
-        // API Base URL - Change this to your actual API URL
-        const API_BASE_URL = '';
+        // Set API base URL to current origin
+        const API_BASE_URL = window.location.origin;
         
         // DOM Elements
         const authTabs = document.querySelectorAll('.auth-tab');
@@ -232,12 +232,12 @@
         
         // Switch between login and register tabs
         authTabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                const tabId = tab.getAttribute('data-tab');
+            tab.addEventListener('click', function() {
+                const tabId = this.getAttribute('data-tab');
                 
                 // Update active tab
                 authTabs.forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
+                this.classList.add('active');
                 
                 // Update active form
                 authForms.forEach(form => form.classList.remove('active'));
@@ -269,12 +269,12 @@
             const token = localStorage.getItem('token');
             if (token) {
                 // Redirect to main app
-                window.location.href = 'index.html';
+                window.location.href = '/';
             }
         }
         
         // Handle login
-        loginForm.addEventListener('submit', async (e) => {
+        loginForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const username = document.getElementById('login-username').value;
@@ -304,7 +304,7 @@
                 showMessage('Login successful! Redirecting...', 'success');
                 
                 setTimeout(() => {
-                window.location.href = '/';
+                    window.location.href = '/';
                 }, 1500);
             } catch (error) {
                 console.error('Login error:', error);
@@ -313,7 +313,7 @@
         });
         
         // Handle registration
-        registerForm.addEventListener('submit', async (e) => {
+        registerForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const username = document.getElementById('register-username').value;
