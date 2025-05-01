@@ -220,8 +220,8 @@
     </footer>
     
     <script>
-        // Set API base URL to current origin
-        const API_BASE_URL = window.location.origin;
+        // API Base URL - Change this to your actual API URL
+        const API_BASE_URL = 'https://boozebuddy.online';
         
         // DOM Elements
         const authTabs = document.querySelectorAll('.auth-tab');
@@ -232,12 +232,12 @@
         
         // Switch between login and register tabs
         authTabs.forEach(tab => {
-            tab.addEventListener('click', function() {
-                const tabId = this.getAttribute('data-tab');
+            tab.addEventListener('click', () => {
+                const tabId = tab.getAttribute('data-tab');
                 
                 // Update active tab
                 authTabs.forEach(t => t.classList.remove('active'));
-                this.classList.add('active');
+                tab.classList.add('active');
                 
                 // Update active form
                 authForms.forEach(form => form.classList.remove('active'));
@@ -269,12 +269,12 @@
             const token = localStorage.getItem('token');
             if (token) {
                 // Redirect to main app
-                window.location.href = '/';
+                window.location.href = 'index.html';
             }
         }
         
         // Handle login
-        loginForm.addEventListener('submit', async function(e) {
+        loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const username = document.getElementById('login-username').value;
@@ -304,7 +304,7 @@
                 showMessage('Login successful! Redirecting...', 'success');
                 
                 setTimeout(() => {
-                    window.location.href = '/';
+                    window.location.href = 'index.html';
                 }, 1500);
             } catch (error) {
                 console.error('Login error:', error);
@@ -313,7 +313,7 @@
         });
         
         // Handle registration
-        registerForm.addEventListener('submit', async function(e) {
+        registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const username = document.getElementById('register-username').value;
@@ -364,5 +364,105 @@
         // Check authentication on page load
         document.addEventListener('DOMContentLoaded', checkAuth);
     </script>
+    // Add this JavaScript fix to the bottom of your login.html file
+// This will ensure proper authentication and reliable redirection
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log("Login page loaded");
+    
+    // Clear any existing auth tokens to ensure fresh login
+    localStorage.removeItem('token');
+    localStorage.removeItem('token_type');
+    
+    // More robust API base URL configuration
+    const API_BASE_URL = window.location.origin;
+    console.log("Using API base URL:", API_BASE_URL);
+    
+    // Get DOM elements
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+    const messageBox = document.getElementById('message');
+    
+    // Enhanced login handler with better error handling
+    loginForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const username = document.getElementById('login-username').value;
+      const password = document.getElementById('login-password').value;
+      
+      showMessage('Logging in...', 'info');
+      
+      try {
+        const formData = new FormData();
+        formData.append('username', username);
+        formData.append('password', password);
+        
+        console.log("Sending login request to:", `${API_BASE_URL}/token`);
+        
+        const response = await fetch(`${API_BASE_URL}/token`, {
+          method: 'POST',
+          body: formData
+        });
+        
+        console.log("Login response status:", response.status);
+        
+        if (!response.ok) {
+          let errorMessage = 'Login failed. Please check your credentials.';
+          try {
+            const error = await response.json();
+            errorMessage = error.detail || errorMessage;
+          } catch (e) {
+            // If response is not JSON, use default error message
+          }
+          throw new Error(errorMessage);
+        }
+        
+        const data = await response.json();
+        
+        // Save token and redirect
+        localStorage.setItem('token', data.access_token);
+        localStorage.setItem('token_type', data.token_type);
+        
+        showMessage('Login successful! Redirecting...', 'success');
+        
+        // Use timeout to ensure message is seen
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1500);
+      } catch (error) {
+        console.error('Login error:', error);
+        showMessage(error.message || 'Login failed. Please check your credentials.', 'error');
+      }
+    });
+    
+    // Show message with improved styling
+    function showMessage(text, type) {
+      messageBox.textContent = text;
+      messageBox.className = `message message-${type}`;
+      messageBox.style.display = 'block';
+      
+      // Scroll to message
+      messageBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    
+    // Hide message
+    function hideMessage() {
+      messageBox.style.display = 'none';
+    }
+    
+    // Immediately check auth state
+    function checkAuth() {
+      const token = localStorage.getItem('token');
+      if (token) {
+        console.log("Token found, redirecting to main app");
+        window.location.href = '/';
+      }
+    }
+    
+    // Run auth check (though we already cleared tokens above, this is a failsafe)
+    checkAuth();
+  });
+</script>
 </body>
 </html>
