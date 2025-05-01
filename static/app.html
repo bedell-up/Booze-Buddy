@@ -599,39 +599,780 @@
     </div>
     
     <script>
-        // More robust API base URL configuration
-        let API_BASE_URL = window.location.origin;
+        // Check authentication before any actions
+        document.addEventListener('DOMContentLoaded', function() {
+            // Make sure user is logged in
+            const token = localStorage.getItem('token');
+            const tokenType = localStorage.getItem('token_type');
+            
+            if (!token || !tokenType) {
+                console.log("No auth token found, redirecting to login");
+                window.location.href = '/login';
+                return;
+            }
+            
+            console.log("Auth token found, initializing app");
+            initializeApp();
+        });
         
-        // Get the hostname (domain) that the site is currently running on
-        const currentHost = window.location.hostname;
-        
-        // Handle www vs non-www consistently
-        const hostWithoutWWW = currentHost.replace('www.', '');
-        
-        // Build the API URL using the protocol and cleaned hostname
-        API_BASE_URL = `${window.location.protocol}//${hostWithoutWWW}`;
-        
-        // For debugging purposes
-        console.log("Using API_BASE_URL:", API_BASE_URL);
-        
-        // DOM Elements
-        const inventorySection = document.getElementById('inventory-section');
-        const cocktailsSection = document.getElementById('cocktails-section');
-        const cocktailDetailSection = document.getElementById('cocktail-detail-section');
-        const searchSection = document.getElementById('search-section');
-        const scanSection = document.getElementById('scan-section');
-        const barcodeSection = document.getElementById('barcode-section');
-        
-        const navInventory = document.getElementById('nav-inventory');
-        const navCocktails = document.getElementById('nav-cocktails');
-        const navSearch = document.getElementById('nav-search');
-        const navScan = document.getElementById('nav-scan');
-        const navBarcode = document.getElementById('nav-barcode');
-        
-        const inventoryList = document.getElementById('inventory-list');
-        const addIngredientInput = document.getElementById('add-ingredient');
-        const addIngredientBtn = document.getElementById('add-ingredient-btn');
-        const addCommonBtn = document.getElementById('add-common-btn');
-        
-        const cocktailsGrid = document.getElementById('cocktails-grid');
-        const cocktailFilter = document.getElementById('coc
+        function initializeApp() {
+            // More robust API base URL configuration
+            let API_BASE_URL = window.location.origin;
+            
+            // Get the hostname (domain) that the site is currently running on
+            const currentHost = window.location.hostname;
+            
+            // Handle www vs non-www consistently
+            const hostWithoutWWW = currentHost.replace('www.', '');
+            
+            // Build the API URL using the protocol and cleaned hostname
+            API_BASE_URL = `${window.location.protocol}//${hostWithoutWWW}`;
+            
+            // For debugging purposes
+            console.log("Using API_BASE_URL:", API_BASE_URL);
+            
+            // DOM Elements
+            const inventorySection = document.getElementById('inventory-section');
+            const cocktailsSection = document.getElementById('cocktails-section');
+            const cocktailDetailSection = document.getElementById('cocktail-detail-section');
+            const searchSection = document.getElementById('search-section');
+            const scanSection = document.getElementById('scan-section');
+            const barcodeSection = document.getElementById('barcode-section');
+            
+            const navInventory = document.getElementById('nav-inventory');
+            const navCocktails = document.getElementById('nav-cocktails');
+            const navSearch = document.getElementById('nav-search');
+            const navScan = document.getElementById('nav-scan');
+            const navBarcode = document.getElementById('nav-barcode');
+            
+            const inventoryList = document.getElementById('inventory-list');
+            const addIngredientInput = document.getElementById('add-ingredient');
+            const addIngredientBtn = document.getElementById('add-ingredient-btn');
+            const addCommonBtn = document.getElementById('add-common-btn');
+            
+            const cocktailsGrid = document.getElementById('cocktails-grid');
+            const cocktailFilter = document.getElementById('cocktail-filter');
+            const refreshCocktailsBtn = document.getElementById('refresh-cocktails');
+            
+            const cocktailDetail = document.getElementById('cocktail-detail');
+            const backToCocktailsBtn = document.getElementById('back-to-cocktails');
+            
+            const searchQuery = document.getElementById('search-query');
+            const searchBtn = document.getElementById('search-btn');
+            const searchResults = document.getElementById('search-results');
+            
+            const bottleImage = document.getElementById('bottle-image');
+            const fileName = document.getElementById('file-name');
+            const scanControls = document.getElementById('scan-controls');
+            const analyzeImageBtn = document.getElementById('analyze-image-btn');
+            const scanResults = document.getElementById('scan-results');
+            
+            const userNameDisplay = document.getElementById('user-name');
+            const logoutBtn = document.getElementById('logout-btn');
+            
+            // Auth state
+            let authToken = localStorage.getItem('token');
+            let authTokenType = localStorage.getItem('token_type');
+            let currentUser = null;
+            
+            // State
+            let inventory = [];
+            let availableCocktails = [];
+            let currentCocktail = null;
+            
+            // Authentication functions
+            function getAuthHeader() {
+                if (!authToken) {
+                    return {};
+                }
+                return {
+                    'Authorization': `${authTokenType} ${authToken}`
+                };
+            }
+            
+            async function checkAuth() {
+                if (!authToken) {
+                    // Redirect to login page if no token
+                    window.location.href = '/login';
+                    return false;
+                }
+                
+                try {
+                    // Verify token by fetching user info
+                    const response = await fetch(`${API_BASE_URL}/users/me`, {
+                        headers: getAuthHeader()
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Authentication failed');
+                    }
+                    
+                    currentUser = await response.json();
+                    userNameDisplay.textContent = currentUser.username;
+                    
+                    return true;
+                } catch (error) {
+                    console.error('Auth check failed:', error);
+                    // Clear invalid token and redirect to login
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('token_type');
+                    window.location.href = '/login';
+                    return false;
+                }
+            }
+            
+            // Logout function
+            function logout() {
+                console.log("Logout clicked");
+                // Clear auth data
+                localStorage.removeItem('token');
+                localStorage.removeItem('token_type');
+                
+                // Redirect to login page
+                console.log("Redirecting to login");
+                window.location.href = '/login';
+            }
+            
+            // Navigation
+            function showSection(section) {
+                // Hide all sections
+                inventorySection.classList.add('hidden');
+                cocktailsSection.classList.add('hidden');
+                cocktailDetailSection.classList.add('hidden');
+                searchSection.classList.add('hidden');
+                scanSection.classList.add('hidden');
+                barcodeSection.classList.add('hidden');
+                
+                // Show the requested section
+                section.classList.remove('hidden');
+            }
+            
+            // Event Listeners for Navigation
+            navInventory.addEventListener('click', function(e) {
+                e.preventDefault();
+                showSection(inventorySection);
+                loadInventory();
+            });
+            
+            navCocktails.addEventListener('click', function(e) {
+                e.preventDefault();
+                showSection(cocktailsSection);
+                loadAvailableCocktails();
+            });
+            
+            navSearch.addEventListener('click', function(e) {
+                e.preventDefault();
+                showSection(searchSection);
+            });
+            
+            navScan.addEventListener('click', function(e) {
+                e.preventDefault();
+                showSection(scanSection);
+            });
+            
+            navBarcode.addEventListener('click', function(e) {
+                e.preventDefault();
+                showSection(barcodeSection);
+            });
+            
+            backToCocktailsBtn.addEventListener('click', function() {
+                showSection(cocktailsSection);
+            });
+            
+            // Inventory Functions
+            async function loadInventory() {
+                try {
+                    inventoryList.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i></div>';
+                    
+                    const response = await fetch(`${API_BASE_URL}/inventory/`, {
+                        headers: getAuthHeader()
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to load inventory');
+                    }
+                    
+                    const data = await response.json();
+                    
+                    inventory = data.inventory;
+                    renderInventory();
+                } catch (error) {
+                    console.error('Error loading inventory:', error);
+                    inventoryList.innerHTML = '<div class="message message-error">Failed to load inventory. Please try again.</div>';
+                }
+            }
+            
+            function renderInventory() {
+                inventoryList.innerHTML = '';
+                
+                if (inventory.length === 0) {
+                    inventoryList.innerHTML = '<div class="message">Your inventory is empty. Add some ingredients to get started!</div>';
+                    return;
+                }
+                
+                inventory.forEach(item => {
+                    const itemElement = document.createElement('div');
+                    itemElement.className = 'inventory-item';
+                    itemElement.innerHTML = `
+                        ${item}
+                        <i class="fas fa-times" data-item="${item}"></i>
+                    `;
+                    inventoryList.appendChild(itemElement);
+                });
+                
+                // Add event listeners for remove buttons
+                document.querySelectorAll('.inventory-item .fa-times').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const item = this.getAttribute('data-item');
+                        removeFromInventory(item);
+                    });
+                });
+            }
+            
+            async function addToInventory() {
+                const ingredient = addIngredientInput.value.trim().toLowerCase();
+                
+                if (!ingredient) {
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`${API_BASE_URL}/inventory/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...getAuthHeader()
+                        },
+                        body: JSON.stringify({
+                            name: ingredient
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to add ingredient');
+                    }
+                    
+                    const data = await response.json();
+                    inventory = data.inventory;
+                    renderInventory();
+                    
+                    // Clear input
+                    addIngredientInput.value = '';
+                } catch (error) {
+                    console.error('Error adding ingredient:', error);
+                    alert('Failed to add ingredient. Please try again.');
+                }
+            }
+            
+            async function removeFromInventory(item) {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/inventory/${item}`, {
+                        method: 'DELETE',
+                        headers: getAuthHeader()
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to remove ingredient');
+                    }
+                    
+                    const data = await response.json();
+                    inventory = data.inventory;
+                    renderInventory();
+                } catch (error) {
+                    console.error('Error removing ingredient:', error);
+                    alert('Failed to remove ingredient. Please try again.');
+                }
+            }
+            
+            // Cocktails Functions
+            async function loadAvailableCocktails() {
+                try {
+                    cocktailsGrid.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i></div>';
+                    
+                    const response = await fetch(`${API_BASE_URL}/cocktails/available/`, {
+                        headers: getAuthHeader()
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to load cocktails');
+                    }
+                    
+                    const data = await response.json();
+                    
+                    availableCocktails = data.cocktails;
+                    renderCocktails();
+                } catch (error) {
+                    console.error('Error loading cocktails:', error);
+                    cocktailsGrid.innerHTML = '<div class="message message-error">Failed to load cocktails. Please try again.</div>';
+                }
+            }
+            
+            function renderCocktails() {
+                cocktailsGrid.innerHTML = '';
+                
+                if (availableCocktails.length === 0) {
+                    cocktailsGrid.innerHTML = '<div class="message">No cocktails found. Try adding more ingredients to your inventory!</div>';
+                    return;
+                }
+                
+                let filteredCocktails = availableCocktails;
+                
+                // Apply filter
+                if (cocktailFilter.value === 'can-make') {
+                    filteredCocktails = availableCocktails.filter(cocktail => cocktail.can_make);
+                } else if (cocktailFilter.value === 'missing-few') {
+                    filteredCocktails = availableCocktails.filter(cocktail => !cocktail.can_make && cocktail.missing.length <= 2);
+                }
+                
+                if (filteredCocktails.length === 0) {
+                    cocktailsGrid.innerHTML = '<div class="message">No cocktails found with the current filter. Try a different filter!</div>';
+                    return;
+                }
+                
+                filteredCocktails.forEach(cocktail => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `
+                        <div class="card-image">
+                            <img src="${cocktail.image_url}" alt="${cocktail.name}">
+                        </div>
+                        <div class="card-content">
+                            <h3 class="card-title">${cocktail.name}</h3>
+                            <div class="card-status ${cocktail.can_make ? 'status-can-make' : 'status-missing'}">
+                                ${cocktail.can_make ? 'Can Make Now!' : 'Missing Ingredients'}
+                            </div>
+                            ${!cocktail.can_make ? `<div class="missing-items">Missing: ${cocktail.missing.join(', ')}</div>` : ''}
+                            <button class="btn btn-primary view-cocktail" data-id="${cocktail.id}">View Recipe</button>
+                        </div>
+                    `;
+                    cocktailsGrid.appendChild(card);
+                });
+                
+                // Add event listeners for view buttons
+                document.querySelectorAll('.view-cocktail').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const id = this.getAttribute('data-id');
+                        viewCocktailDetails(id);
+                    });
+                });
+            }
+            
+            async function viewCocktailDetails(id) {
+                try {
+                    cocktailDetail.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i></div>';
+                    showSection(cocktailDetailSection);
+                    
+                    const response = await fetch(`${API_BASE_URL}/cocktails/details/${id}`, {
+                        headers: getAuthHeader()
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to load cocktail details');
+                    }
+                    
+                    const cocktail = await response.json();
+                    
+                    currentCocktail = cocktail;
+                    renderCocktailDetails();
+                } catch (error) {
+                    console.error('Error loading cocktail details:', error);
+                    cocktailDetail.innerHTML = '<div class="message message-error">Failed to load cocktail details. Please try again.</div>';
+                }
+            }
+            
+            function renderCocktailDetails() {
+                if (!currentCocktail) {
+                    return;
+                }
+                
+                cocktailDetail.innerHTML = `
+                    <h2>${currentCocktail.name}</h2>
+                    <div class="card-status ${currentCocktail.can_make ? 'status-can-make' : 'status-missing'}">
+                        ${currentCocktail.can_make ? 'You can make this!' : 'Missing ingredients'}
+                    </div>
+                    
+                    <div class="cocktail-detail">
+                        <div class="cocktail-image">
+                            <img src="${currentCocktail.image_url}" alt="${currentCocktail.name}">
+                        </div>
+                        <div class="cocktail-info">
+                            <p><strong>Glass:</strong> ${currentCocktail.glass}</p>
+                            
+                            <div class="cocktail-ingredients">
+                                <h3>Ingredients:</h3>
+                                <ul>
+                                    ${currentCocktail.ingredients.map(ingredient => `
+                                        <li class="ingredient-item">
+                                            <span class="ingredient-status ${inventory.includes(ingredient.name) ? 'ingredient-available' : 'ingredient-missing'}">
+                                                ${inventory.includes(ingredient.name) ? '✓' : '✗'}
+                                            </span>
+                                            ${ingredient.measure ? ingredient.measure + ' ' : ''} ${ingredient.name}
+                                            ${!inventory.includes(ingredient.name) ? 
+                                                `<button class="btn btn-small add-missing-ingredient" data-ingredient="${ingredient.name}">Add</button>` : 
+                                                ''}
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                            </div>
+                            
+                            <div class="cocktail-instructions">
+                                <h3>Instructions:</h3>
+                                <p>${currentCocktail.instructions}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Add event listeners for adding missing ingredients
+                document.querySelectorAll('.add-missing-ingredient').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const ingredient = this.getAttribute('data-ingredient');
+                        addMissingIngredient(ingredient);
+                    });
+                });
+            }
+            
+            async function addMissingIngredient(ingredient) {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/inventory/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...getAuthHeader()
+                        },
+                        body: JSON.stringify({
+                            name: ingredient
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to add ingredient');
+                    }
+                    
+                    const data = await response.json();
+                    inventory = data.inventory;
+                    
+                    // Refresh cocktail details
+                    await viewCocktailDetails(currentCocktail.id);
+                    
+                    alert(`Added ${ingredient} to your inventory!`);
+                } catch (error) {
+                    console.error('Error adding ingredient:', error);
+                    alert('Failed to add ingredient. Please try again.');
+                }
+            }
+            
+            // Search Functions
+            async function searchCocktails() {
+                const query = searchQuery.value.trim();
+                
+                if (!query) {
+                    return;
+                }
+                
+                try {
+                    searchResults.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i></div>';
+                    
+                    const response = await fetch(`${API_BASE_URL}/cocktails/search/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...getAuthHeader()
+                        },
+                        body: JSON.stringify({
+                            query: query
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to search cocktails');
+                    }
+                    
+                    const data = await response.json();
+                    renderSearchResults(data.cocktails);
+                } catch (error) {
+                    console.error('Error searching cocktails:', error);
+                    searchResults.innerHTML = '<div class="message message-error">Failed to search cocktails. Please try again.</div>';
+                }
+            }
+            
+            function renderSearchResults(results) {
+                searchResults.innerHTML = '';
+                
+                if (results.length === 0) {
+                    searchResults.innerHTML = '<div class="message">No cocktails found matching your search. Try a different query!</div>';
+                    return;
+                }
+                
+                results.forEach(cocktail => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `
+                        <div class="card-image">
+                            <img src="${cocktail.image_url}" alt="${cocktail.name}">
+                        </div>
+                        <div class="card-content">
+                            <h3 class="card-title">${cocktail.name}</h3>
+                            <div class="card-status ${cocktail.can_make ? 'status-can-make' : 'status-missing'}">
+                                ${cocktail.can_make ? 'Can Make Now!' : 'Missing Ingredients'}
+                            </div>
+                            ${!cocktail.can_make ? `<div class="missing-items">Missing: ${cocktail.missing.join(', ')}</div>` : ''}
+                            <button class="btn btn-primary view-cocktail" data-id="${cocktail.id}">View Recipe</button>
+                        </div>
+                    `;
+                    searchResults.appendChild(card);
+                });
+                
+                // Add event listeners for view buttons
+                document.querySelectorAll('.view-cocktail').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const id = this.getAttribute('data-id');
+                        viewCocktailDetails(id);
+                    });
+                });
+            }
+            
+            // Scan Bottles Functions
+            bottleImage.addEventListener('change', function(e) {
+                if (e.target.files.length > 0) {
+                    fileName.textContent = e.target.files[0].name;
+                    scanControls.classList.remove('hidden');
+                } else {
+                    fileName.textContent = '';
+                    scanControls.classList.add('hidden');
+                }
+            });
+            
+            async function analyzeImage() {
+                if (!bottleImage.files || bottleImage.files.length === 0) {
+                    alert('Please select an image first.');
+                    return;
+                }
+                
+                try {
+                    const formData = new FormData();
+                    formData.append('file', bottleImage.files[0]);
+                    
+                    scanResults.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i></div>';
+                    
+                    const response = await fetch(`${API_BASE_URL}/analyze-image/`, {
+                        method: 'POST',
+                        headers: getAuthHeader(),
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to analyze image');
+                    }
+                    
+                    const data = await response.json();
+                    renderScanResults(data);
+                } catch (error) {
+                    console.error('Error analyzing image:', error);
+                    scanResults.innerHTML = '<div class="message message-error">Failed to analyze image. Please try again.</div>';
+                }
+            }
+            
+            function renderScanResults(data) {
+                if (!data.detections || data.detections.length === 0) {
+                    scanResults.innerHTML = `
+                        <div class="message">
+                            No alcohol items detected in the image. Try taking a clearer photo with good lighting and visible labels.
+                        </div>
+                    `;
+                    return;
+                }
+                
+                let html = `
+                    <h3>Detected Items</h3>
+                    <p>${data.message}</p>
+                    <div class="detected-items">
+                `;
+                
+                data.detections.forEach(detection => {
+                    const isInInventory = inventory.includes(detection.type);
+                    
+                    html += `
+                        <div class="inventory-item">
+                            ${detection.brand} (${detection.type})
+                            ${isInInventory ? 
+                                '<span class="item-status">✓ In Inventory</span>' : 
+                                `<button class="btn btn-small add-detected-item" data-item="${detection.type}">Add to Inventory</button>`
+                            }
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                scanResults.innerHTML = html;
+                
+                // Add event listeners for add buttons
+                document.querySelectorAll('.add-detected-item').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const item = this.getAttribute('data-item');
+                        addToInventoryFromScan(item);
+                    });
+                });
+            }
+            
+            async function addToInventoryFromScan(item) {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/inventory/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...getAuthHeader()
+                        },
+                        body: JSON.stringify({
+                            name: item
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to add item');
+                    }
+                    
+                    const data = await response.json();
+                    inventory = data.inventory;
+                    
+                    alert(`Added ${item} to your inventory!`);
+                    
+                    // Refresh scan results
+                    analyzeImage();
+                } catch (error) {
+                    console.error('Error adding item:', error);
+                    alert('Failed to add item. Please try again.');
+                }
+            }
+            
+            // Common Ingredients Modal Functions
+            async function loadCommonIngredients() {
+                try {
+                    const commonIngredientsModal = document.getElementById('common-ingredients-modal');
+                    const commonIngredientsList = document.getElementById('common-ingredients-list');
+                    
+                    commonIngredientsList.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i></div>';
+                    commonIngredientsModal.classList.remove('hidden');
+                    
+                    const response = await fetch(`${API_BASE_URL}/ingredients/common/`, {
+                        headers: getAuthHeader()
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to load common ingredients');
+                    }
+                    
+                    const data = await response.json();
+                    
+                    let html = '<ul>';
+                    data.forEach(ingredient => {
+                        const isInInventory = inventory.includes(ingredient);
+                        
+                        html += `
+                            <li>
+                                <input type="checkbox" id="ingredient-${ingredient}" ${isInInventory ? 'checked disabled' : ''}>
+                                <label for="ingredient-${ingredient}">${ingredient} ${isInInventory ? '(already in inventory)' : ''}</label>
+                            </li>
+                        `;
+                    });
+                    html += '</ul>';
+                    
+                    commonIngredientsList.innerHTML = html;
+                } catch (error) {
+                    console.error('Error loading common ingredients:', error);
+                    alert('Failed to load common ingredients. Please try again.');
+                }
+            }
+            
+            async function addSelectedCommonIngredients() {
+                const commonIngredientsModal = document.getElementById('common-ingredients-modal');
+                const selectedIngredients = [];
+                
+                document.querySelectorAll('#common-ingredients-list input[type="checkbox"]:checked:not([disabled])').forEach(checkbox => {
+                    selectedIngredients.push(checkbox.id.replace('ingredient-', ''));
+                });
+                
+                if (selectedIngredients.length === 0) {
+                    alert('Please select at least one ingredient.');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`${API_BASE_URL}/inventory/add-common/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...getAuthHeader()
+                        },
+                        body: JSON.stringify(selectedIngredients)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to add ingredients');
+                    }
+                    
+                    const data = await response.json();
+                    inventory = data.inventory;
+                    renderInventory();
+                    
+                    commonIngredientsModal.classList.add('hidden');
+                    alert(`Added ${selectedIngredients.length} ingredients to your inventory!`);
+                } catch (error) {
+                    console.error('Error adding common ingredients:', error);
+                    alert('Failed to add ingredients. Please try again.');
+                }
+            }
+            
+            // Event Listeners
+            logoutBtn.addEventListener('click', logout);
+            
+            addIngredientBtn.addEventListener('click', addToInventory);
+            addIngredientInput.addEventListener('keyup', function(e) {
+                if (e.key === 'Enter') {
+                    addToInventory();
+                }
+            });
+            
+            addCommonBtn.addEventListener('click', loadCommonIngredients);
+            document.getElementById('add-selected-common').addEventListener('click', addSelectedCommonIngredients);
+            document.querySelector('#common-ingredients-modal .close').addEventListener('click', function() {
+                document.getElementById('common-ingredients-modal').classList.add('hidden');
+            });
+            
+            refreshCocktailsBtn.addEventListener('click', loadAvailableCocktails);
+            cocktailFilter.addEventListener('change', renderCocktails);
+            
+            searchBtn.addEventListener('click', searchCocktails);
+            searchQuery.addEventListener('keyup', function(e) {
+                if (e.key === 'Enter') {
+                    searchCocktails();
+                }
+            });
+            
+            analyzeImageBtn.addEventListener('click', analyzeImage);
+            
+            // Run auth check and load initial data
+            checkAuth().then(authenticated => {
+                if (authenticated) {
+                    // Start with the inventory section
+                    showSection(inventorySection);
+                    loadInventory();
+                }
+            });
+        }
+    </script>
+</body>
+</html>ail.id}">View Recipe</button>
+                        </div>
+                    `;
+                    searchResults.appendChild(card);
+                });
+                
+                // Add event listeners for view buttons
+                document.querySelectorAll('.view-cocktail').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const id = this.getAttribute('data-id');
+                        viewCocktailDetails(id);
+                    });
+                });
+            }
