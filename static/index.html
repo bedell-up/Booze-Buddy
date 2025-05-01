@@ -691,14 +691,28 @@
             }
         }
         
-        function logout() {
+        // Make sure your logout function is working correctly
+function logout() {
+    console.log("Logout clicked");
     // Clear auth data
-            localStorage.removeItem('token');
-            localStorage.removeItem('token_type');
+    localStorage.removeItem('token');
+    localStorage.removeItem('token_type');
     
     // Redirect to login page
-            window.location.href = '/login';
-        }
+    console.log("Redirecting to login");
+    window.location.href = '/login';
+}
+
+// Ensure the event listener is properly attached
+document.addEventListener('DOMContentLoaded', () => {
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        console.log("Logout button found, attaching event listener");
+        logoutBtn.addEventListener('click', logout);
+    } else {
+        console.error("Logout button not found");
+    }
+});
         
         // Navigation
         function showSection(section) {
