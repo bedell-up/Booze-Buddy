@@ -400,6 +400,36 @@
                 margin-bottom: 20px;
             }
         }
+        .scanner-container {
+    margin: 20px 0;
+    position: relative;
+}
+
+#scanner-view {
+    position: relative;
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+}
+
+#scanner-video {
+    width: 100%;
+    height: auto;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+#stop-scanner {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+}
+
+.drawingBuffer {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
     </style>
 </head>
 <body>
@@ -421,6 +451,7 @@
             <li><a href="#" id="nav-cocktails">Available Cocktails</a></li>
             <li><a href="#" id="nav-search">Search</a></li>
             <li><a href="#" id="nav-scan">Scan Bottles</a></li>
+            <li><a href="#" id="nav-barcode">Scan Barcode</a></li>
         </ul>
     </nav>
     
@@ -505,6 +536,54 @@
                 <!-- Scan results will be added here -->
             </div>
         </section>
+        <!-- Barcode Scanner Section -->
+<section id="barcode-section" class="section hidden">
+    <h2>Scan Barcode</h2>
+    
+    <div class="scanner-container">
+        <div id="scanner-placeholder">
+            <button id="start-scanner" class="btn btn-primary">
+                <i class="fas fa-barcode"></i> Start Barcode Scanner
+            </button>
+        </div>
+        <div id="scanner-view" class="hidden">
+            <video id="scanner-video" playsinline></video>
+            <button id="stop-scanner" class="btn btn-error">
+                <i class="fas fa-stop"></i> Stop Scanner
+            </button>
+        </div>
+    </div>
+    
+    <div id="barcode-result" class="hidden">
+        <div class="card">
+            <div class="card-content">
+                <h3 id="product-name" class="card-title">Product Name</h3>
+                <p><strong>Brand:</strong> <span id="product-brand">Unknown</span></p>
+                <p><strong>Type:</strong> <span id="product-type">Unknown</span></p>
+                <p><strong>Barcode:</strong> <span id="product-barcode">Unknown</span></p>
+                <div class="form-group">
+                    <label for="alcohol-type">Alcohol Type:</label>
+                    <select id="alcohol-type">
+                        <option value="whiskey">Whiskey</option>
+                        <option value="bourbon">Bourbon</option>
+                        <option value="scotch">Scotch</option>
+                        <option value="vodka">Vodka</option>
+                        <option value="gin">Gin</option>
+                        <option value="rum">Rum</option>
+                        <option value="tequila">Tequila</option>
+                        <option value="brandy">Brandy</option>
+                        <option value="liqueur">Liqueur</option>
+                        <option value="wine">Wine</option>
+                        <option value="beer">Beer</option>
+                        <option value="spirit">Other Spirit</option>
+                    </select>
+                </div>
+                <button id="add-to-inventory" class="btn btn-success">Add to Inventory</button>
+                <button id="scan-another" class="btn">Scan Another</button>
+            </div>
+        </div>
+    </div>
+</section>
     </div>
     
     <!-- Common Ingredients Modal -->
@@ -1270,131 +1349,3 @@ document.addEventListener('DOMContentLoaded', async () => {
         loadInventory();
     }
 });
-
-// Look up barcode information
-async function lookupBarcode(barcode) {
-    try {
-        // Show loading indicator
-        barcodeResult.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i></div>';
-        barcodeResult.classList.remove('hidden');
-        
-        const response = await fetch(`${API_BASE_URL}/lookup-barcode/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...getAuthHeader()
-            },
-            body: JSON.stringify({
-                barcode: barcode
-            })
-        });
-        
-        // Clear loading indicator
-        barcodeResult.innerHTML = '';
-        
-        if (!response.ok) {
-            throw new Error('Failed to look up barcode');
-        }
-        
-        const data = await response.json();
-        
-        // Restore the original HTML structure
-        barcodeResult.innerHTML = `
-            <div class="card">
-                <div class="card-content">
-                    <h3 id="product-name" class="card-title">${data.name || 'Unknown Product'}</h3>
-                    <p><strong>Brand:</strong> <span id="product-brand">${data.brand || 'Unknown'}</span></p>
-                    <p><strong>Type:</strong> <span id="product-type">${data.type || 'Unknown'}</span></p>
-                    <p><strong>Barcode:</strong> <span id="product-barcode">${barcode}</span></p>
-                    <div class="form-group">
-                        <label for="alcohol-type">Alcohol Type:</label>
-                        <select id="alcohol-type">
-                            <option value="whiskey">Whiskey</option>
-                            <option value="bourbon">Bourbon</option>
-                            <option value="scotch">Scotch</option>
-                            <option value="vodka">Vodka</option>
-                            <option value="gin">Gin</option>
-                            <option value="rum">Rum</option>
-                            <option value="tequila">Tequila</option>
-                            <option value="brandy">Brandy</option>
-                            <option value="liqueur">Liqueur</option>
-                            <option value="wine">Wine</option>
-                            <option value="beer">Beer</option>
-                            <option value="spirit">Other Spirit</option>
-                        </select>
-                    </div>
-                    <button id="add-to-inventory" class="btn btn-success">Add to Inventory</button>
-                    <button id="scan-another" class="btn">Scan Another</button>
-                </div>
-            </div>
-        `;
-        
-        // Re-assign DOM elements
-        productName = document.getElementById('product-name');
-        productBrand = document.getElementById('product-brand');
-        productType = document.getElementById('product-type');
-        productBarcode = document.getElementById('product-barcode');
-        alcoholType = document.getElementById('alcohol-type');
-        addToInventoryBtn = document.getElementById('add-to-inventory');
-        scanAnotherBtn = document.getElementById('scan-another');
-        
-        // Set the alcohol type dropdown
-        if (data.type) {
-            alcoholType.value = data.type;
-        }
-        
-        // Reattach event listeners
-        addToInventoryBtn.addEventListener('click', addBarcodeProductToInventory);
-        scanAnotherBtn.addEventListener('click', () => {
-            barcodeResult.classList.add('hidden');
-            scannerPlaceholder.classList.remove('hidden');
-        });
-        
-    } catch (error) {
-        console.error('Error looking up barcode:', error);
-        
-        // If lookup fails, still let the user add a product manually
-        barcodeResult.innerHTML = `
-            <div class="card">
-                <div class="card-content">
-                    <h3 id="product-name" class="card-title">Product Not Found</h3>
-                    <p>The barcode ${barcode} was not found in the database.</p>
-                    <p><strong>Barcode:</strong> <span id="product-barcode">${barcode}</span></p>
-                    <div class="form-group">
-                        <label for="alcohol-type">Alcohol Type:</label>
-                        <select id="alcohol-type">
-                            <option value="whiskey">Whiskey</option>
-                            <option value="bourbon">Bourbon</option>
-                            <option value="scotch">Scotch</option>
-                            <option value="vodka">Vodka</option>
-                            <option value="gin">Gin</option>
-                            <option value="rum">Rum</option>
-                            <option value="tequila">Tequila</option>
-                            <option value="brandy">Brandy</option>
-                            <option value="liqueur">Liqueur</option>
-                            <option value="wine">Wine</option>
-                            <option value="beer">Beer</option>
-                            <option value="spirit">Other Spirit</option>
-                        </select>
-                    </div>
-                    <button id="add-to-inventory" class="btn btn-success">Add to Inventory</button>
-                    <button id="scan-another" class="btn">Scan Another</button>
-                </div>
-            </div>
-        `;
-        
-        // Re-assign DOM elements
-        productName = document.getElementById('product-name');
-        productBarcode = document.getElementById('product-barcode');
-        alcoholType = document.getElementById('alcohol-type');
-        addToInventoryBtn = document.getElementById('add-to-inventory');
-        scanAnotherBtn = document.getElementById('scan-another');
-        
-        // Reattach event listeners
-        addToInventoryBtn.addEventListener('click', addBarcodeProductToInventory);
-        scanAnotherBtn.addEventListener('click', () => {
-            barcodeResult.classList.add('hidden');
-            scannerPlaceholder.classList.remove('hidden');
-        });
-    }
-}
