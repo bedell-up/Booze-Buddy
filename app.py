@@ -14,7 +14,29 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, HTMLResponse
 
+app = FastAPI()
+
+# Mount the static directory (adjust path if needed)
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Serve index.html at root
+@app.get("/", response_class=HTMLResponse)
+async def read_root():
+    return FileResponse("static/index.html")
+
+# Serve login.html at /login
+@app.get("/login", response_class=HTMLResponse)
+async def read_login():
+    return FileResponse("static/login.html")
+
+# Serve app.html at /app
+@app.get("/app", response_class=HTMLResponse)
+async def read_app():
+    return FileResponse("static/app.html")
 # Pydantic imports
 from pydantic import BaseModel, EmailStr
 
