@@ -1,170 +1,175 @@
+
+<!-- login.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Booze Buddy - Login</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #5a3e2b;
-            --secondary-color: #8c7054;
-            --light-color: #f0e6d9;
-            --accent-color: #d4a25a;
-            --error-color: #c23b22;
-            --success-color: #4caf50;
+    <title>Login - Booze Buddy</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div id="message" style="display:none;"></div>
+
+    <div>
+        <button class="auth-tab active" data-tab="login">Login</button>
+        <button class="auth-tab" data-tab="register">Register</button>
+    </div>
+
+    <form id="login-form" class="auth-form active">
+        <input type="text" id="login-username" placeholder="Username" required />
+        <input type="password" id="login-password" placeholder="Password" required />
+        <button type="submit">Login</button>
+    </form>
+
+    <form id="register-form" class="auth-form">
+        <input type="text" id="register-username" placeholder="Username" required />
+        <input type="email" id="register-email" placeholder="Email" required />
+        <input type="password" id="register-password" placeholder="Password" required />
+        <input type="password" id="register-confirm-password" placeholder="Confirm Password" required />
+        <button type="submit">Register</button>
+    </form>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("Login page loaded, clearing any existing tokens");
+            localStorage.removeItem('token');
+            localStorage.removeItem('token_type');
+        });
+
+        let API_BASE_URL = window.location.origin;
+        const currentHost = window.location.hostname;
+        const hostWithoutWWW = currentHost.replace('www.', '');
+        API_BASE_URL = `${window.location.protocol}//${hostWithoutWWW}`;
+
+        console.log("Using API_BASE_URL:", API_BASE_URL);
+
+        const authTabs = document.querySelectorAll('.auth-tab');
+        const authForms = document.querySelectorAll('.auth-form');
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const messageBox = document.getElementById('message');
+
+        authTabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                const tabId = this.getAttribute('data-tab');
+                authTabs.forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                authForms.forEach(form => form.classList.remove('active'));
+                if (tabId === 'login') {
+                    loginForm.classList.add('active');
+                } else {
+                    registerForm.classList.add('active');
+                }
+                hideMessage();
+            });
+        });
+
+        function showMessage(text, type) {
+            messageBox.textContent = text;
+            messageBox.className = `message message-${type}`;
+            messageBox.style.display = 'block';
+            messageBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+        function hideMessage() {
+            messageBox.style.display = 'none';
         }
-        
-        body {
-            background-color: var(--light-color);
-            color: #333;
-            line-height: 1.6;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .container {
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 20px;
-            flex: 1;
-        }
-        
-        header {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 20px 0;
-            text-align: center;
-        }
-        
-        header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-        }
-        
-        .auth-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 70vh;
-        }
-        
-        .auth-box {
-            background-color: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            width: 100%;
-            max-width: 400px;
-            padding: 30px;
-        }
-        
-        .auth-tabs {
-            display: flex;
-            margin-bottom: 20px;
-        }
-        
-        .auth-tab {
-            flex: 1;
-            padding: 10px;
-            text-align: center;
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
-            font-weight: bold;
-            transition: all 0.3s ease;
-        }
-        
-        .auth-tab.active {
-            border-bottom: 3px solid var(--accent-color);
-            color: var(--accent-color);
-        }
-        
-        .auth-form {
-            display: none;
-        }
-        
-        .auth-form.active {
-            display: block;
-        }
-        
-        .form-group {
-            margin-bottom: 20px;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 500;
-        }
-        
-        .form-group input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 16px;
-        }
-        
-        .btn {
-            display: inline-block;
-            background-color: var(--accent-color);
-            color: white;
-            padding: 12px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-            transition: background-color 0.3s;
-            width: 100%;
-            text-align: center;
-        }
-        
-        .btn:hover {
-            background-color: #b88c40;
-        }
-        
-        .message {
-            padding: 12px;
-            margin: 20px 0;
-            border-radius: 5px;
-            text-align: center;
-            display: none;
-        }
-        
-        .message-error {
-            background-color: #ffebee;
-            color: var(--error-color);
-            border: 1px solid var(--error-color);
-        }
-        
-        .message-success {
-            background-color: #e8f5e9;
-            color: var(--success-color);
-            border: 1px solid var(--success-color);
-        }
-        
-        .message-info {
-            background-color: #e3f2fd;
-            color: #0288d1;
-            border: 1px solid #0288d1;
-        }
-        
-        footer {
-            background-color: var(--primary-color);
-            color: white;
-            text-align: center;
-            padding: 20px 0;
-            font-size: 0.9rem;
-        }
-    </style>
+
+        loginForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+
+            showMessage('Logging in...', 'info');
+
+            try {
+                const formData = new FormData();
+                formData.append('username', username);
+                formData.append('password', password);
+
+                console.log("Sending login request to:", `${API_BASE_URL}/token`);
+
+                const response = await fetch(`${API_BASE_URL}/token`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                console.log("Login response status:", response.status);
+
+                if (!response.ok) {
+                    let errorMessage = 'Login failed. Please check your credentials.';
+                    try {
+                        const error = await response.json();
+                        errorMessage = error.detail || errorMessage;
+                    } catch (e) {}
+                    throw new Error(errorMessage);
+                }
+
+                const data = await response.json();
+
+                localStorage.setItem('token', data.access_token);
+                localStorage.setItem('token_type', data.token_type);
+
+                showMessage('Login successful! Redirecting...', 'success');
+
+                setTimeout(() => {
+                    const appUrl = `${window.location.protocol}//${window.location.host}/app`;  // <== UPDATED HERE
+                    console.log("Redirecting to:", appUrl);
+                    window.location.href = appUrl;
+                }, 1500);
+            } catch (error) {
+                console.error('Login error:', error);
+                showMessage(error.message || 'Login failed. Please check your credentials.', 'error');
+            }
+        });
+
+        registerForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const username = document.getElementById('register-username').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const confirmPassword = document.getElementById('register-confirm-password').value;
+
+            if (password !== confirmPassword) {
+                showMessage('Passwords do not match', 'error');
+                return;
+            }
+
+            try {
+                showMessage('Creating account...', 'info');
+
+                const response = await fetch(`${API_BASE_URL}/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password })
+                });
+
+                if (!response.ok) {
+                    let errorMessage = 'Registration failed. Please try again.';
+                    try {
+                        const error = await response.json();
+                        errorMessage = error.detail || errorMessage;
+                    } catch (e) {}
+                    throw new Error(errorMessage);
+                }
+
+                const data = await response.json();
+
+                showMessage('Registration successful! Please login.', 'success');
+                registerForm.reset();
+                authTabs[0].click();
+            } catch (error) {
+                console.error('Registration error:', error);
+                showMessage(error.message || 'Registration failed. Please try again.', 'error');
+            }
+        });
+    </script>
+</body>
+</html>
+
+    <
 </head>
 <body>
     <header>
