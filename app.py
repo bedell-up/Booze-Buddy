@@ -18,22 +18,35 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse
 
-app = FastAPI()
+# Keep only one app definition at the top
+app = FastAPI(
+    title="Booze Buddy API",
+    description="API for managing your bar inventory and discovering cocktails",
+    version="1.0.0"
+)
 
-# Mount the static directory (adjust path if needed)
+# Mount the static directory for access via /static
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Also mount static files at the root to enable direct access to style.css
+app.mount("/", StaticFiles(directory="static"), name="root")
 
 # Serve index.html at root
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
     return FileResponse("static/index.html")
 
-# Serve login.html at /login
+# Root route to serve the main application
+@app.get("/", response_class=HTMLResponse)
+async def read_root():
+    return FileResponse("static/index.html")
+
+# Login page
 @app.get("/login", response_class=HTMLResponse)
 async def read_login():
     return FileResponse("static/login.html")
 
-# Serve app.html at /app
+# App page
 @app.get("/app", response_class=HTMLResponse)
 async def read_app():
     return FileResponse("static/app.html")
