@@ -18,35 +18,22 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse
 
-# Keep only one app definition at the top
-app = FastAPI(
-    title="Booze Buddy API",
-    description="API for managing your bar inventory and discovering cocktails",
-    version="1.0.0"
-)
+app = FastAPI()
 
-# Mount the static directory for access via /static
+# Mount the static directory (adjust path if needed)
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# Also mount static files at the root to enable direct access to style.css
-app.mount("/", StaticFiles(directory="static"), name="root")
 
 # Serve index.html at root
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
     return FileResponse("static/index.html")
 
-# Root route to serve the main application
-@app.get("/", response_class=HTMLResponse)
-async def read_root():
-    return FileResponse("static/index.html")
-
-# Login page
+# Serve login.html at /login
 @app.get("/login", response_class=HTMLResponse)
 async def read_login():
     return FileResponse("static/login.html")
 
-# App page
+# Serve app.html at /app
 @app.get("/app", response_class=HTMLResponse)
 async def read_app():
     return FileResponse("static/app.html")
@@ -261,6 +248,33 @@ class ImageAnalysisResult(BaseModel):
 class SearchQuery(BaseModel):
     query: str
 
+# Create FastAPI app
+app = FastAPI(
+    title="Booze Buddy API",
+    description="API for managing your bar inventory and discovering cocktails",
+    version="1.0.0"
+)
+
+# Try using a more direct approach for specific pages
+@app.get("/", response_class=HTMLResponse)
+async def read_root():
+    with open("static/index.html", "r") as f:
+        return f.read()
+
+@app.get("/login", response_class=HTMLResponse)
+async def read_login():
+    with open("static/login.html", "r") as f:
+        return f.read()
+
+# Root route to serve the main application
+@app.get("/", response_class=HTMLResponse)
+async def read_root():
+    return FileResponse("static/index.html")
+
+# Login page
+@app.get("/login", response_class=HTMLResponse)
+async def read_login():
+    return FileResponse("static/login.html")
 
 # Enable CORS
 app.add_middleware(
@@ -904,25 +918,7 @@ def search_cocktails(
         "total_count": len(result)
     }
 
-# For demo purposes, add some items to the inventory
-@app.post("/demo/initialize/")
-def initialize_demo(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Initialize demo data with some inventory items for testing."""
-    # Remove existing inventory for this user
-    db.query(InventoryItem).filter(InventoryItem.user_id == current_user.id).delete()
-    
-    # Add demo items
-    demo_items = ["vodka", "gin", "rum", "tequila", "triple sec", 
-                 "lime juice", "simple syrup", "orange juice", "cranberry juice"]
-    
-    for item_name in demo_items:
-        db_item = InventoryItem(name=item_name.lower(), user_id=current_user.id)
-        db.add(db_item)
-    
-    db.commit()
+
     
     # Get updated inventory
     inventory_items = get_current_inventory(db, current_user.id)
