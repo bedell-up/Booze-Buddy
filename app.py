@@ -261,33 +261,6 @@ class ImageAnalysisResult(BaseModel):
 class SearchQuery(BaseModel):
     query: str
 
-# Create FastAPI app
-app = FastAPI(
-    title="Booze Buddy API",
-    description="API for managing your bar inventory and discovering cocktails",
-    version="1.0.0"
-)
-
-# Try using a more direct approach for specific pages
-@app.get("/", response_class=HTMLResponse)
-async def read_root():
-    with open("static/index.html", "r") as f:
-        return f.read()
-
-@app.get("/login", response_class=HTMLResponse)
-async def read_login():
-    with open("static/login.html", "r") as f:
-        return f.read()
-
-# Root route to serve the main application
-@app.get("/", response_class=HTMLResponse)
-async def read_root():
-    return FileResponse("static/index.html")
-
-# Login page
-@app.get("/login", response_class=HTMLResponse)
-async def read_login():
-    return FileResponse("static/login.html")
 
 # Enable CORS
 app.add_middleware(
