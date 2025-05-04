@@ -25,17 +25,20 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
     formData.append('password', password);
 
     const res = await fetch('/token', {
-        method: 'POST',
-        body: formData // ✅ let browser set correct headers
-    });
+    method: 'POST',
+    body: formData
+});
 
-    if (res.ok) {
-        const data = await res.json();
-        localStorage.setItem('token', data.access_token);
-        window.location.href = '/app.html';
-    } else {
-        alert('Login failed');
-    }
+const text = await res.text(); // always parse as text
+console.log("Response:", text);
+
+if (res.ok) {
+    const data = JSON.parse(text);
+    localStorage.setItem('token', data.access_token);
+    window.location.href = '/app.html';
+} else {
+    alert('Login failed: ' + text);
+}
 });
 </script>
 </body>
