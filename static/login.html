@@ -1,10 +1,10 @@
-<!-- login.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Login - Booze Buddy</title>
-<link rel="stylesheet" href="style.css">
+    <link rel="icon" href="/static/favicon.ico">
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <div id="message" style="display:none;"></div>
@@ -35,11 +35,7 @@
             localStorage.removeItem('token_type');
         });
 
-        let API_BASE_URL = window.location.origin;
-        const currentHost = window.location.hostname;
-        const hostWithoutWWW = currentHost.replace('www.', '');
-        API_BASE_URL = `${window.location.protocol}//${hostWithoutWWW}`;
-
+        const API_BASE_URL = window.location.origin;
         console.log("Using API_BASE_URL:", API_BASE_URL);
 
         const authTabs = document.querySelectorAll('.auth-tab');
@@ -113,7 +109,7 @@
                 showMessage('Login successful! Redirecting...', 'success');
 
                 setTimeout(() => {
-                    const appUrl = `${window.location.protocol}//${window.location.host}/app`;  // <== UPDATED HERE
+                    const appUrl = `${window.location.origin}/app`;
                     console.log("Redirecting to:", appUrl);
                     window.location.href = appUrl;
                 }, 1500);
