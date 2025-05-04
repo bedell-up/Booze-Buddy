@@ -150,3 +150,15 @@ def ping():
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+@app.get("/")
+def root():
+    return FileResponse("static/index.html")
+
+@app.get("/login")
+def login_page():
+    return FileResponse("static/login.html")
+
+@app.get("/app")
+def app_page():
+    return FileResponse("static/app.html")
