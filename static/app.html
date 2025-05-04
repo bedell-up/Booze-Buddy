@@ -267,29 +267,27 @@
                     return false;
                 }
                 
-                try {
-                    // Verify token by fetching user info
-                    const response = await fetch(${API_BASE_URL}/users/me, {
-                        headers: getAuthHeader()
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('Authentication failed');
-                    }
-                    
-                    currentUser = await response.json();
-                    userNameDisplay.textContent = currentUser.username;
-                    
-                    return true;
-                } catch (error) {
-                    console.error('Auth check failed:', error);
-                    // Clear invalid token and redirect to login
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('token_type');
-                    window.location.href = '/login';
-                    return false;
-                }
-            }
+            try {
+                const response = await fetch(`${API_BASE_URL}/users/me`, {
+                headers: getAuthHeader()
+                });
+    
+               if (!response.ok) {
+               throw new Error('Authentication failed');
+               }
+    
+               currentUser = await response.json();
+               userNameDisplay.textContent = currentUser.username;
+    
+               return true;
+        } catch (error) {
+               console.error('Auth check failed:', error);
+               localStorage.removeItem('token');
+               localStorage.removeItem('token_type');
+               window.location.href = '/login';
+               return false;
+               }
+
             
             // Logout function
             function logout() {
