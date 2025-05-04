@@ -17,7 +17,7 @@ from google.oauth2 import service_account
 import io
 
 # Setup Google Cloud Vision
-GCP_CREDENTIALS_JSON = os.environ.get("GCP_CREDENTIALS_JSON")
+GCP_CREDENTIALS_JSON = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
 if not GCP_CREDENTIALS_JSON:
     raise RuntimeError("Missing Google Cloud credentials")
 
