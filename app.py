@@ -1,5 +1,5 @@
 # --- Imports ---
-from fastapi import FastAPI, Depends, HTTPException, status, File, UploadFile
+from fastapi import FastAPI, Depends, HTTPException, status, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -12,7 +12,6 @@ from google.cloud import vision
 from google.oauth2 import service_account
 import os
 import json
-import Form
 
 # --- App Setup ---
 app = FastAPI()
