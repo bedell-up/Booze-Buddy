@@ -142,3 +142,7 @@ async def analyze_image(file: UploadFile = File(...)):
     labels = response.label_annotations
     label_descriptions = [label.description for label in labels]
     return {"labels": label_descriptions}
+
+@app.get("/ping")
+def ping():
+    return {"status": "alive", "routes": [route.path for route in app.routes]}
