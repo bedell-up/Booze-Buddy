@@ -53,6 +53,27 @@
     });
 
     loadInventory();
+
+        document.getElementById('analyzeButton').addEventListener('click', async () => {
+    const fileInput = document.getElementById('imageInput');
+    const file = fileInput.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await fetch('/analyze-image/', {
+        method: 'POST',
+        body: formData
+    });
+
+    if (res.ok) {
+        const data = await res.json();
+        console.log('Detected labels:', data.labels);
+        alert('Detected: ' + data.labels.join(', '));
+    } else {
+        alert('Failed to analyze image');
+    }
+});
+
     </script>
 </body>
 </html>
