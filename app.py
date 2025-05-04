@@ -11,11 +11,26 @@ import os
 import uuid
 import shutil
 import json
+import io
+
+app = FastAPI()
+
+# === FASTAPI APP ===
+app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 from google.cloud import vision
 from google.oauth2 import service_account
 
-import io
+
 
 # Setup Google Cloud Vision
 GCP_CREDENTIALS_JSON = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
