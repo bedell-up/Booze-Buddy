@@ -146,8 +146,8 @@ class UserResponse(BaseModel):
     email: str
     is_active: bool
 
-    class Config:
-        orm_mode = True
+class Config:
+    from_attributes = True
 
 class InventoryItemCreate(BaseModel):
     name: str
