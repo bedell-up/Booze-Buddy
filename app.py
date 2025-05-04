@@ -5,6 +5,10 @@ from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any
 
 import requests
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 from fastapi import (
     FastAPI, Depends, HTTPException, status, File, UploadFile, Body
@@ -169,6 +173,17 @@ class CocktailDetails(BaseModel):
     ingredients: List[CocktailIngredient]
     can_make: bool
     missing: List[str]
+
+logger.info("New user registered: %s", username)
+logger.error("Failed DB commit: %s", str(e))
+
+try:
+    db.add(new_user)
+    db.commit()
+except Exception as e:
+    logger.exception("Database error while adding user")
+    db.rollback()
+    raise HTTPException(status_code=500, detail="Internal server error")
 
 # === BoozeBuddy Cocktail Logic ===
 class BoozeBuddy:
