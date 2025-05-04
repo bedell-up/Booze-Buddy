@@ -1,216 +1,58 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Booze Buddy</title>
+    <title>Booze Buddy App</title>
     <link rel="stylesheet" href="/static/style.css">
-    <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 </head>
 <body>
-    <header>
-        <div class="container">
-            <h1>Booze Buddy 🍸</h1>
-            <div class="user-info">
-                Welcome, <span id="user-name">User</span>!
-                <button id="logout-btn">Logout</button>
-            </div>
-        </div>
-    </header>
+    <h1>Welcome to Booze Buddy</h1>
+    <div>
+        <input type="text" id="ingredient" placeholder="Add ingredient">
+        <button id="addBtn">Add</button>
+    </div>
+    <ul id="inventory-list"></ul>
 
-    <nav>
-        <button data-section="inventory">Inventory</button>
-        <button data-section="cocktails">Cocktails</button>
-        <button data-section="search">Search</button>
-        <button data-section="scan">Scan Bottles</button>
-        <button data-section="barcode">Scan Barcode</button>
-    </nav>
-
-    <main>
-        <section id="inventory" class="section hidden">
-            <h2>Inventory</h2>
-            <input id="add-ingredient" placeholder="Add ingredient">
-            <button id="add-ingredient-btn">Add</button>
-            <ul id="inventory-list"></ul>
-        </section>
-
-        <section id="cocktails" class="section hidden">
-            <h2>Cocktails</h2>
-            <div id="cocktails-list"></div>
-        </section>
-
-        <section id="search" class="section hidden">
-            <h2>Search Cocktails</h2>
-            <input id="search-input" placeholder="Cocktail name">
-            <button id="search-btn">Search</button>
-            <div id="search-results"></div>
-        </section>
-
-        <section id="scan" class="section hidden">
-            <h2>Scan Bottles</h2>
-            <input type="file" id="bottle-image" accept="image/*">
-            <button id="analyze-btn">Analyze Image</button>
-            <div id="scan-results"></div>
-        </section>
-
-        <section id="barcode" class="section hidden">
-            <h2>Barcode Scanner</h2>
-            <div id="barcode-scanner" style="width:300px; height:200px; border:1px solid #ccc;"></div>
-            <div id="barcode-result">No barcode detected yet.</div>
-            <button id="start-scanner">Start Scanner</button>
-            <button id="stop-scanner">Stop Scanner</button>
-            <button id="add-barcode-to-inventory" class="hidden">Add to Inventory</button>
-        </section>
-    </main>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <script>
-    const API_BASE = window.location.origin;
-    const authToken = localStorage.getItem('token');
-    const authType = localStorage.getItem('token_type');
-
-    const headers = () => ({
-        'Authorization': `${authType} ${authToken}`,
-        'Content-Type': 'application/json'
-    });
-
-    async function getUser() {
-        const res = await fetch(`${API_BASE}/users/me`, { headers: headers() });
-        if (res.ok) {
-            const user = await res.json();
-            document.getElementById('user-name').textContent = user.username;
-        } else {
-            localStorage.clear();
-            window.location.href = '/login';
-        }
-    }
-
-    function showSection(name) {
-        document.querySelectorAll('.section').forEach(sec => sec.classList.add('hidden'));
-        document.getElementById(name).classList.remove('hidden');
-    }
-
-    document.querySelectorAll('nav button').forEach(btn => {
-        btn.addEventListener('click', () => showSection(btn.dataset.section));
-    });
-
-    document.getElementById('logout-btn').addEventListener('click', () => {
-        localStorage.clear();
-        window.location.href = '/login';
-    });
+    const token = localStorage.getItem('token');
+    const API_BASE = '';
 
     async function loadInventory() {
-        const res = await fetch(`${API_BASE}/inventory/`, { headers: headers() });
-        if (res.ok) {
-            const data = await res.json();
-            const list = document.getElementById('inventory-list');
-            list.innerHTML = '';
-            data.inventory.forEach(item => {
-                const li = document.createElement('li');
-                li.textContent = item;
-                li.addEventListener('click', () => removeInventory(item));
-                list.appendChild(li);
-            });
-        }
+        const res = await fetch(`${API_BASE}/inventory/?token=${token}`);
+        const data = await res.json();
+        const list = document.getElementById('inventory-list');
+        list.innerHTML = '';
+        data.inventory.forEach(item => {
+            const li = document.createElement('li');
+            li.textContent = item;
+            list.appendChild(li);
+        });
     }
 
-    async function addInventory(item) {
-        await fetch(`${API_BASE}/inventory/`, {
+    document.getElementById('addBtn').addEventListener('click', async () => {
+        const name = document.getElementById('ingredient').value;
+        await fetch(`${API_BASE}/inventory/?token=${token}`, {
             method: 'POST',
-            headers: headers(),
-            body: JSON.stringify({ name: item })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name })
         });
         loadInventory();
-    }
-
-    async function removeInventory(item) {
-        await fetch(`${API_BASE}/inventory/${item}`, {
-            method: 'DELETE',
-            headers: headers()
-        });
-        loadInventory();
-    }
-
-    document.getElementById('add-ingredient-btn').addEventListener('click', () => {
-        const val = document.getElementById('add-ingredient').value.trim();
-        if (val) addInventory(val);
     });
 
-    document.getElementById('search-btn').addEventListener('click', async () => {
-        const query = document.getElementById('search-input').value.trim();
-        const res = await fetch(`${API_BASE}/cocktails/search/`, {
-            method: 'POST',
-            headers: headers(),
-            body: JSON.stringify({ query })
-        });
-        const data = await res.json();
-        const results = document.getElementById('search-results');
-        results.innerHTML = data.cocktails.map(c => `<div>${c.name}</div>`).join('');
+    // Barcode scanner setup
+    Quagga.init({
+        inputStream: { name: 'Live', type: 'LiveStream', target: document.querySelector('body') },
+        decoder: { readers: ['ean_reader'] }
+    }, err => {
+        if (!err) Quagga.start();
     });
 
-    document.getElementById('analyze-btn').addEventListener('click', async () => {
-        const fileInput = document.getElementById('bottle-image');
-        const formData = new FormData();
-        formData.append('file', fileInput.files[0]);
-        const res = await fetch(`${API_BASE}/analyze-image/`, {
-            method: 'POST',
-            headers: { 'Authorization': `${authType} ${authToken}` },
-            body: formData
-        });
-        const data = await res.json();
-        document.getElementById('scan-results').textContent = JSON.stringify(data.detections);
+    Quagga.onDetected(data => {
+        alert('Barcode detected: ' + data.codeResult.code);
     });
 
-    // Barcode Scanner Logic
-    let scannerActive = false;
-    let lastCode = '';
-
-    document.getElementById('start-scanner').addEventListener('click', () => {
-        if (scannerActive) return;
-        scannerActive = true;
-        Quagga.init({
-            inputStream: {
-                type: "LiveStream",
-                target: document.getElementById('barcode-scanner')
-            },
-            decoder: {
-                readers: ["ean_reader", "code_128_reader"]
-            }
-        }, err => {
-            if (err) return console.error(err);
-            Quagga.start();
-        });
-
-        Quagga.onDetected(data => {
-            if (data.codeResult.code !== lastCode) {
-                lastCode = data.codeResult.code;
-                document.getElementById('barcode-result').textContent = `Detected: ${lastCode}`;
-                document.getElementById('add-barcode-to-inventory').classList.remove('hidden');
-            }
-        });
-    });
-
-    document.getElementById('stop-scanner').addEventListener('click', () => {
-        Quagga.stop();
-        scannerActive = false;
-        document.getElementById('barcode-result').textContent = 'Scanner stopped.';
-        document.getElementById('add-barcode-to-inventory').classList.add('hidden');
-    });
-
-    document.getElementById('add-barcode-to-inventory').addEventListener('click', async () => {
-        if (lastCode) {
-            await addInventory(lastCode);
-            alert(`Added ${lastCode} to inventory!`);
-            document.getElementById('add-barcode-to-inventory').classList.add('hidden');
-        }
-    });
-
-    // Initialize
-    getUser();
     loadInventory();
-    showSection('inventory');
     </script>
 </body>
 </html>
