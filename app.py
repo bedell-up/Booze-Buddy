@@ -174,7 +174,7 @@ class CocktailDetails(BaseModel):
     can_make: bool
     missing: List[str]
 
-logger.info("New user registered: %s", username)
+
 logger.error("Failed DB commit: %s", str(e))
 
 try:
