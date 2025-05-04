@@ -99,7 +99,11 @@ def register(username: str, email: str, password: str, db: Session = Depends(get
     return {"message": "User registered"}
 
 @app.post("/token")
-def login(username: str, password: str, db: Session = Depends(get_db)):
+def login(
+    username: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db)
+):
     user = db.query(User).filter(User.username == username).first()
     if not user or not verify_password(password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
