@@ -146,3 +146,7 @@ async def analyze_image(file: UploadFile = File(...)):
 @app.get("/ping")
 def ping():
     return {"status": "alive", "routes": [route.path for route in app.routes]}
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
