@@ -12,6 +12,7 @@ from google.cloud import vision
 from google.oauth2 import service_account
 import os
 import json
+import Form
 
 # --- App Setup ---
 app = FastAPI()
