@@ -10,6 +10,7 @@ from jose import JWTError, jwt
 import os
 import uuid
 import shutil
+import json
 
 from google.cloud import vision
 from google.oauth2 import service_account
