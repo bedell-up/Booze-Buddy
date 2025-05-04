@@ -154,16 +154,16 @@ def health():
 
 @app.get("/")
 def root():
-    return FileResponse("/static/index.html")
+    return FileResponse("static/index.html")
 
 @app.get("/login")
 def login_page():
-    return FileResponse("/static/login.html")
+    return FileResponse("static/login.html")
 
 @app.get("/app")
 def app_page():
-    return FileResponse("/static/app.html")
+    return FileResponse("static/app.html")
 
 @app.get("/favicon.ico")
 def favicon():
-    return FileResponse("/static/favicon.ico")
+    return FileResponse("static/favicon.ico")
