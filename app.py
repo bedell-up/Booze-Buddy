@@ -16,6 +16,7 @@ from sqlalchemy.orm import sessionmaker, Session, relationship
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 from pydantic import BaseModel
+from pathlib import Path
 
 # ---------------------- CONFIG ----------------------
 
@@ -151,15 +152,29 @@ def get_current_inventory(db: Session, user_id: int) -> List[str]:
     items = db.query(InventoryItem).filter(InventoryItem.user_id == user_id).all()
     return [item.name for item in items]
 
+def serve_static_html(file_path: str, route_name: str):
+    html_file = Path(file_path)
+    if html_file.exists():
+        return HTMLResponse(content=html_file.read_text(), status_code=200)
+    else:
+        return HTMLResponse(
+            content=f"<h1>500 Internal Server Error</h1><p>{route_name} file '{file_path}' not found on server.</p>",
+            status_code=500
+        )
+
 # ---------------------- ROUTES ----------------------
 
 @app.get("/", response_class=HTMLResponse)
-async def serve_index():
-    return FileResponse("static/index.html")
+async def read_root():
+    return serve_static_html("static/index.html", "/")
 
 @app.get("/login", response_class=HTMLResponse)
-async def serve_login():
-    return FileResponse("static/login.html")
+async def read_login():
+    return serve_static_html("static/login.html", "/login")
+
+@app.get("/app", response_class=HTMLResponse)
+async def read_app():
+    return serve_static_html("static/app.html", "/app")
 
 @app.get("/health")
 def health_check():
