@@ -1,4 +1,4 @@
-# app.py
+# --- Imports ---
 from fastapi import FastAPI, Depends, HTTPException, status, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -7,15 +7,12 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session, relationship
 from passlib.hash import bcrypt
 from jose import JWTError, jwt
+from google.cloud import vision
+from google.oauth2 import service_account
 import os
-import uuid
-import shutil
 import json
-import io
 
-app = FastAPI()
-
-# === FASTAPI APP ===
+# --- App Setup ---
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.add_middleware(
@@ -26,13 +23,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-from google.cloud import vision
-from google.oauth2 import service_account
-
-
-
-# Setup Google Cloud Vision
+# --- Google Cloud Vision ---
 GCP_CREDENTIALS_JSON = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
 if not GCP_CREDENTIALS_JSON:
     raise RuntimeError("Missing Google Cloud credentials")
@@ -42,12 +33,12 @@ credentials = service_account.Credentials.from_service_account_info(
 )
 vision_client = vision.ImageAnnotatorClient(credentials=credentials)
 
-# === CONFIG ===
+# --- Config ---
 DATABASE_URL = os.environ.get("DATABASE_URL")
 SECRET_KEY = os.environ.get("SECRET_KEY", "devsecret")
 ALGORITHM = "HS256"
 
-# === DATABASE SETUP ===
+# --- Database Setup ---
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 Base = declarative_base()
@@ -69,7 +60,7 @@ class InventoryItem(Base):
 
 Base.metadata.create_all(bind=engine)
 
-# === DEPENDENCIES ===
+# --- Dependency ---
 def get_db():
     db = SessionLocal()
     try:
@@ -77,14 +68,25 @@ def get_db():
     finally:
         db.close()
 
-# === UTILS ===
+# --- Utils ---
 def create_access_token(data: dict):
     return jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
 
 def verify_password(plain, hashed):
     return bcrypt.verify(plain, hashed)
 
-# === ROUTES ===
+def get_current_user(token: str, db: Session):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        user = db.query(User).filter(User.username == username).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return user
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+# --- Routes ---
 @app.post("/register")
 def register(username: str, email: str, password: str, db: Session = Depends(get_db)):
     if db.query(User).filter((User.username == username) | (User.email == email)).first():
@@ -105,60 +107,38 @@ def login(username: str, password: str, db: Session = Depends(get_db)):
 
 @app.get("/users/me")
 def get_me(token: str, db: Session = Depends(get_db)):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username = payload.get("sub")
-        user = db.query(User).filter(User.username == username).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        return {"username": user.username, "email": user.email}
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    user = get_current_user(token, db)
+    return {"id": user.id, "username": user.username, "email": user.email}
 
 @app.get("/inventory/")
 def get_inventory(token: str, db: Session = Depends(get_db)):
-    user = get_me(token, db)
-    items = db.query(InventoryItem).filter(InventoryItem.user_id == user["id"]).all()
+    user = get_current_user(token, db)
+    items = db.query(InventoryItem).filter(InventoryItem.user_id == user.id).all()
     return {"inventory": [item.name for item in items]}
 
 @app.post("/inventory/")
 def add_inventory(name: str, token: str, db: Session = Depends(get_db)):
-    user = get_me(token, db)
-    item = InventoryItem(name=name, user_id=user["id"])
+    user = get_current_user(token, db)
+    item = InventoryItem(name=name, user_id=user.id)
     db.add(item)
     db.commit()
     return {"message": "Item added"}
 
 @app.delete("/inventory/{item_id}")
 def delete_inventory(item_id: int, token: str, db: Session = Depends(get_db)):
-    user = get_me(token, db)
-    item = db.query(InventoryItem).filter(InventoryItem.id == item_id, InventoryItem.user_id == user["id"]).first()
+    user = get_current_user(token, db)
+    item = db.query(InventoryItem).filter(InventoryItem.id == item_id, InventoryItem.user_id == user.id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     db.delete(item)
     db.commit()
     return {"message": "Item deleted"}
 
-from fastapi import UploadFile, File
-
 @app.post("/analyze-image/")
 async def analyze_image(file: UploadFile = File(...)):
-    from google.cloud import vision
-    import io
-
-    # Read image content
     content = await file.read()
-
-    # Initialize Google Cloud Vision client
-    client = vision.ImageAnnotatorClient()
     image = vision.Image(content=content)
-
-    # Run label detection
-    response = client.label_detection(image=image)
+    response = vision_client.label_detection(image=image)
     labels = response.label_annotations
-
-    # Extract label descriptions
     label_descriptions = [label.description for label in labels]
-
     return {"labels": label_descriptions}
-
