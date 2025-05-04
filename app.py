@@ -77,17 +77,6 @@ class InventoryItem(Base):
 
 Base.metadata.create_all(bind=engine)
 
-# === FASTAPI APP ===
-app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 # === DEPENDENCIES ===
 def get_db():
     db = SessionLocal()
@@ -157,3 +146,11 @@ def delete_inventory(item_id: int, token: str, db: Session = Depends(get_db)):
     db.delete(item)
     db.commit()
     return {"message": "Item deleted"}
+
+@app.post("/analyze-image/")
+async def analyze_image(file: UploadFile = File(...)):
+    content = await file.read()
+    image = vision.Image(content=content)
+    response = vision_client.label_detection(image=image)
+    labels = [label.description for label in response.label_annotations]
+    return {"labels": labels}
