@@ -4,930 +4,213 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Booze Buddy</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
     <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
-    
-    
-    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 </head>
 <body>
     <header>
         <div class="container">
-            <h1><i class="fas fa-cocktail"></i> Booze Buddy</h1>
-            <p>Your personal cocktail assistant</p>
+            <h1>Booze Buddy 🍸</h1>
             <div class="user-info">
-                <span class="username">Welcome, <span id="user-name">User</span>!</span>
-                <button id="logout-btn" class="logout-btn">Logout</button>
+                Welcome, <span id="user-name">User</span>!
+                <button id="logout-btn">Logout</button>
             </div>
         </div>
     </header>
 
-   <nav>
-        <ul>
-            <li><a href="#" id="nav-inventory">My Inventory</a></li>
-            <li><a href="#" id="nav-cocktails">Available Cocktails</a></li>
-            <li><a href="#" id="nav-search">Search</a></li>
-            <li><a href="#" id="nav-scan">Scan Bottles</a></li>
-            <li><a href="#" id="nav-barcode">Scan Barcode</a></li>
-        </ul>
+    <nav>
+        <button data-section="inventory">Inventory</button>
+        <button data-section="cocktails">Cocktails</button>
+        <button data-section="search">Search</button>
+        <button data-section="scan">Scan Bottles</button>
+        <button data-section="barcode">Scan Barcode</button>
     </nav>
-    
-    <div class="container">
-        <!-- Inventory Section -->
-        <section id="inventory-section" class="section">
-            <h2>My Bar Inventory</h2>
-            
-            <div id="inventory-controls">
-                <input type="text" id="add-ingredient" placeholder="Add ingredient (e.g., vodka, lime juice)">
-                <button id="add-ingredient-btn" class="btn">Add</button>
-                <button id="add-common-btn" class="btn">Add Common Ingredients</button>
-            </div>
-            
-            <div id="inventory-list" class="inventory-list">
-                <!-- Inventory items will be added here -->
-                <div class="loading"><i class="fas fa-spinner"></i></div>
-            </div>
+
+    <main>
+        <section id="inventory" class="section hidden">
+            <h2>Inventory</h2>
+            <input id="add-ingredient" placeholder="Add ingredient">
+            <button id="add-ingredient-btn">Add</button>
+            <ul id="inventory-list"></ul>
         </section>
-        
-        <!-- Available Cocktails Section -->
-        <section id="cocktails-section" class="section hidden">
-            <h2>Cocktails You Can Make</h2>
-            
-            <div id="cocktails-filters">
-                <select id="cocktail-filter">
-                    <option value="all">All Cocktails</option>
-                    <option value="can-make">Cocktails I Can Make</option>
-                    <option value="missing-few">Missing 1-2 Ingredients</option>
-                </select>
-                <button id="refresh-cocktails" class="btn">Refresh</button>
-            </div>
-            
-            <div id="cocktails-grid" class="card-grid">
-                <!-- Cocktail cards will be added here -->
-                <div class="loading"><i class="fas fa-spinner"></i></div>
-            </div>
+
+        <section id="cocktails" class="section hidden">
+            <h2>Cocktails</h2>
+            <div id="cocktails-list"></div>
         </section>
-        
-        <!-- Cocktail Detail Section -->
-        <section id="cocktail-detail-section" class="section hidden">
-            <button id="back-to-cocktails" class="btn"><i class="fas fa-arrow-left"></i> Back to Cocktails</button>
-            
-            <div id="cocktail-detail">
-                <!-- Cocktail details will be added here -->
-                <div class="loading"><i class="fas fa-spinner"></i></div>
-            </div>
-        </section>
-        
-        <!-- Search Section -->
-        <section id="search-section" class="section hidden">
+
+        <section id="search" class="section hidden">
             <h2>Search Cocktails</h2>
-            
-            <div id="search-controls">
-                <input type="text" id="search-query" placeholder="Enter cocktail name (e.g., Margarita, Mojito)">
-                <button id="search-btn" class="btn btn-primary">Search</button>
-            </div>
-            
-            <div id="search-results" class="card-grid">
-                <!-- Search results will be added here -->
-            </div>
+            <input id="search-input" placeholder="Cocktail name">
+            <button id="search-btn">Search</button>
+            <div id="search-results"></div>
         </section>
-        
-        <!-- Scan Bottles Section -->
-        <section id="scan-section" class="section hidden">
-            <h2>Scan Your Bar</h2>
-            
-            <div class="file-input-container">
-                <label for="bottle-image" class="file-input-label">
-                    <i class="fas fa-camera"></i> Take Photo or Select Image
-                </label>
-                <input type="file" id="bottle-image" class="file-input" accept="image/*">
-                <div id="file-name" class="file-name"></div>
-            </div>
-            
-            <div id="scan-controls" class="hidden">
-                <button id="analyze-image-btn" class="btn btn-primary">Analyze Image</button>
-            </div>
-            
-            <div id="scan-results">
-                <!-- Scan results will be added here -->
-            </div>
+
+        <section id="scan" class="section hidden">
+            <h2>Scan Bottles</h2>
+            <input type="file" id="bottle-image" accept="image/*">
+            <button id="analyze-btn">Analyze Image</button>
+            <div id="scan-results"></div>
         </section>
-        <!-- Barcode Scanner Section -->
-        <section id="barcode-section" class="section hidden">
-            <h2>Scan Barcode</h2>
-            
-            <div class="scanner-container">
-                <div id="scanner-placeholder">
-                    <button id="start-scanner" class="btn btn-primary">
-                        <i class="fas fa-barcode"></i> Start Barcode Scanner
-                    </button>
-                </div>
-                <div id="scanner-view" class="hidden">
-                    <video id="scanner-video" playsinline></video>
-                    <button id="stop-scanner" class="btn btn-error">
-                        <i class="fas fa-stop"></i> Stop Scanner
-                    </button>
-                </div>
-            </div>
-            
-            <div id="barcode-result" class="hidden">
-                <div class="card">
-                    <div class="card-content">
-                        <h3 id="product-name" class="card-title">Product Name</h3>
-                        <p><strong>Brand:</strong> <span id="product-brand">Unknown</span></p>
-                        <p><strong>Type:</strong> <span id="product-type">Unknown</span></p>
-                        <p><strong>Barcode:</strong> <span id="product-barcode">Unknown</span></p>
-                        <div class="form-group">
-                            <label for="alcohol-type">Alcohol Type:</label>
-                            <select id="alcohol-type">
-                                <option value="whiskey">Whiskey</option>
-                                <option value="bourbon">Bourbon</option>
-                                <option value="scotch">Scotch</option>
-                                <option value="vodka">Vodka</option>
-                                <option value="gin">Gin</option>
-                                <option value="rum">Rum</option>
-                                <option value="tequila">Tequila</option>
-                                <option value="brandy">Brandy</option>
-                                <option value="liqueur">Liqueur</option>
-                                <option value="wine">Wine</option>
-                                <option value="beer">Beer</option>
-                                <option value="spirit">Other Spirit</option>
-                            </select>
-                        </div>
-                        <button id="add-to-inventory" class="btn btn-success">Add to Inventory</button>
-                        <button id="scan-another" class="btn">Scan Another</button>
-                    </div>
-                </div>
-            </div>
+
+        <section id="barcode" class="section hidden">
+            <h2>Barcode Scanner</h2>
+            <div id="barcode-scanner" style="width:300px; height:200px; border:1px solid #ccc;"></div>
+            <div id="barcode-result">No barcode detected yet.</div>
+            <button id="start-scanner">Start Scanner</button>
+            <button id="stop-scanner">Stop Scanner</button>
+            <button id="add-barcode-to-inventory" class="hidden">Add to Inventory</button>
         </section>
-    </div>
-    
-    <!-- Common Ingredients Modal -->
-    <div id="common-ingredients-modal" class="modal hidden">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>Common Ingredients</h2>
-            <div id="common-ingredients-list">
-                <!-- Common ingredients will be loaded here -->
-                <div class="loading"><i class="fas fa-spinner"></i></div>
-            </div>
-            <button id="add-selected-common" class="btn btn-primary">Add Selected</button>
-        </div>
-    </div>
+    </main>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const token = localStorage.getItem('token');
-            const tokenType = localStorage.getItem('token_type');
+    const API_BASE = window.location.origin;
+    const authToken = localStorage.getItem('token');
+    const authType = localStorage.getItem('token_type');
 
-            if (!token || !tokenType) {
-                if (window.location.pathname !== '/login') {
-                    console.log("No auth token found, redirecting to login");
-                    window.location.href = '/login';
-                }
-                return;
-            }
+    const headers = () => ({
+        'Authorization': `${authType} ${authToken}`,
+        'Content-Type': 'application/json'
+    });
 
-            console.log("Auth token found, initializing app");
-            initializeApp();
-        });
+    async function getUser() {
+        const res = await fetch(`${API_BASE}/users/me`, { headers: headers() });
+        if (res.ok) {
+            const user = await res.json();
+            document.getElementById('user-name').textContent = user.username;
+        } else {
+            localStorage.clear();
+            window.location.href = '/login';
+        }
+    }
 
-        function initializeApp() {
-            const API_BASE_URL = window.location.origin;
+    function showSection(name) {
+        document.querySelectorAll('.section').forEach(sec => sec.classList.add('hidden'));
+        document.getElementById(name).classList.remove('hidden');
+    }
 
-            console.log("Using API_BASE_URL:", API_BASE_URL);
+    document.querySelectorAll('nav button').forEach(btn => {
+        btn.addEventListener('click', () => showSection(btn.dataset.section));
+    });
 
-            // (keep the rest of your JS code as-is here)
-            // DOM Elements
-            const inventorySection = document.getElementById('inventory-section');
-            const cocktailsSection = document.getElementById('cocktails-section');
-            const cocktailDetailSection = document.getElementById('cocktail-detail-section');
-            const searchSection = document.getElementById('search-section');
-            const scanSection = document.getElementById('scan-section');
-            const barcodeSection = document.getElementById('barcode-section');
-            
-            const navInventory = document.getElementById('nav-inventory');
-            const navCocktails = document.getElementById('nav-cocktails');
-            const navSearch = document.getElementById('nav-search');
-            const navScan = document.getElementById('nav-scan');
-            const navBarcode = document.getElementById('nav-barcode');
-            
-            const inventoryList = document.getElementById('inventory-list');
-            const addIngredientInput = document.getElementById('add-ingredient');
-            const addIngredientBtn = document.getElementById('add-ingredient-btn');
-            const addCommonBtn = document.getElementById('add-common-btn');
-            
-            const cocktailsGrid = document.getElementById('cocktails-grid');
-            const cocktailFilter = document.getElementById('cocktail-filter');
-            const refreshCocktailsBtn = document.getElementById('refresh-cocktails');
-            
-            const cocktailDetail = document.getElementById('cocktail-detail');
-            const backToCocktailsBtn = document.getElementById('back-to-cocktails');
-            
-            const searchQuery = document.getElementById('search-query');
-            const searchBtn = document.getElementById('search-btn');
-            const searchResults = document.getElementById('search-results');
-            
-            const bottleImage = document.getElementById('bottle-image');
-            const fileName = document.getElementById('file-name');
-            const scanControls = document.getElementById('scan-controls');
-            const analyzeImageBtn = document.getElementById('analyze-image-btn');
-            const scanResults = document.getElementById('scan-results');
-            
-            const userNameDisplay = document.getElementById('user-name');
-            const logoutBtn = document.getElementById('logout-btn');
-            
-            // Auth state
-            let authToken = localStorage.getItem('token');
-            let authTokenType = localStorage.getItem('token_type');
-            let currentUser = null;
-            
-            // State
-            let inventory = [];
-            let availableCocktails = [];
-            let currentCocktail = null;
-            
-            // Authentication functions
-            function getAuthHeader() {
-                if (!authToken) {
-                    return {};
-                }
-                    return {
-                    'Authorization': `${authTokenType} ${authToken}`
-                };
-            }
-            
-            async function checkAuth() {
-                if (!authToken) {
-                    // Redirect to login page if no token
-                    window.location.href = '/login';
-                    return false;
-                }
-                
-            try {
-                const response = await fetch(`${API_BASE_URL}/users/me`, {
-                headers: getAuthHeader()
-                });
-    
-               if (!response.ok) {
-               throw new Error('Authentication failed');
-               }
-    
-               currentUser = await response.json();
-               userNameDisplay.textContent = currentUser.username;
-    
-               return true;
-        } catch (error) {
-               console.error('Auth check failed:', error);
-               localStorage.removeItem('token');
-               localStorage.removeItem('token_type');
-               window.location.href = '/login';
-               return false;
-               }
+    document.getElementById('logout-btn').addEventListener('click', () => {
+        localStorage.clear();
+        window.location.href = '/login';
+    });
 
-            
-            // Logout function
-            function logout() {
-                console.log("Logout clicked");
-                // Clear auth data
-                localStorage.removeItem('token');
-                localStorage.removeItem('token_type');
-                
-                // Redirect to login page
-                console.log("Redirecting to login");
-                window.location.href = '/login';
-            }
-            
-            // Navigation
-            function showSection(section) {
-                // Hide all sections
-                inventorySection.classList.add('hidden');
-                cocktailsSection.classList.add('hidden');
-                cocktailDetailSection.classList.add('hidden');
-                searchSection.classList.add('hidden');
-                scanSection.classList.add('hidden');
-                barcodeSection.classList.add('hidden');
-                
-                // Show the requested section
-                section.classList.remove('hidden');
-            }
-            
-            // Event Listeners for Navigation
-            navInventory.addEventListener('click', function(e) {
-                e.preventDefault();
-                showSection(inventorySection);
-                loadInventory();
-            });
-            
-            navCocktails.addEventListener('click', function(e) {
-                e.preventDefault();
-                showSection(cocktailsSection);
-                loadAvailableCocktails();
-            });
-            
-            navSearch.addEventListener('click', function(e) {
-                e.preventDefault();
-                showSection(searchSection);
-            });
-            
-            navScan.addEventListener('click', function(e) {
-                e.preventDefault();
-                showSection(scanSection);
-            });
-            
-            navBarcode.addEventListener('click', function(e) {
-                e.preventDefault();
-                showSection(barcodeSection);
-            });
-            
-            backToCocktailsBtn.addEventListener('click', function() {
-                showSection(cocktailsSection);
-            });
-            
-            // Inventory Functions
-            async function loadInventory() {
-                try {
-                    inventoryList.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i></div>';
-                    
-                    const response = await fetch(${API_BASE_URL}/inventory/, {
-                        headers: getAuthHeader()
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('Failed to load inventory');
-                    }
-                    
-                    const data = await response.json();
-                    
-                    inventory = data.inventory;
-                    renderInventory();
-                } catch (error) {
-                    console.error('Error loading inventory:', error);
-                    inventoryList.innerHTML = '<div class="message message-error">Failed to load inventory. Please try again.</div>';
-                }
-            }
-            
-            function renderInventory() {
-                inventoryList.innerHTML = '';
-                
-                if (inventory.length === 0) {
-                    inventoryList.innerHTML = '<div class="message">Your inventory is empty. Add some ingredients to get started!</div>';
-                    return;
-                }
-                
-                inventory.forEach(item => {
-                    const itemElement = document.createElement('div');
-                    itemElement.className = 'inventory-item';
-                    itemElement.innerHTML = 
-                        ${item}
-                        <i class="fas fa-times" data-item="${item}"></i>
-                    ;
-                    inventoryList.appendChild(itemElement);
-                });
-                
-                // Add event listeners for remove buttons
-                document.querySelectorAll('.inventory-item .fa-times').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const item = this.getAttribute('data-item');
-                        removeFromInventory(item);
-                    });
-                });
-            }
-            
-            async function addToInventory() {
-                const ingredient = addIngredientInput.value.trim().toLowerCase();
-                
-                if (!ingredient) {
-                    return;
-                }
-                
-                try {
-                    const response = await fetch(${API_BASE_URL}/inventory/, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            ...getAuthHeader()
-                        },
-                        body: JSON.stringify({
-                            name: ingredient
-                        })
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('Failed to add ingredient');
-                    }
-                    
-                    const data = await response.json();
-                    inventory = data.inventory;
-                    renderInventory();
-                    
-                    // Clear input
-                    addIngredientInput.value = '';
-                } catch (error) {
-                    console.error('Error adding ingredient:', error);
-                    alert('Failed to add ingredient. Please try again.');
-                }
-            }
-            
-            async function removeFromInventory(item) {
-                try {
-                    const response = await fetch(${API_BASE_URL}/inventory/${item}, {
-                        method: 'DELETE',
-                        headers: getAuthHeader()
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('Failed to remove ingredient');
-                    }
-                    
-                    const data = await response.json();
-                    inventory = data.inventory;
-                    renderInventory();
-                } catch (error) {
-                    console.error('Error removing ingredient:', error);
-                    alert('Failed to remove ingredient. Please try again.');
-                }
-            }
-            
-            // Cocktails Functions
-            async function loadAvailableCocktails() {
-                try {
-                    cocktailsGrid.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i></div>';
-                    
-                    const response = await fetch(${API_BASE_URL}/cocktails/available/, {
-                        headers: getAuthHeader()
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('Failed to load cocktails');
-                    }
-                    
-                    const data = await response.json();
-                    
-                    availableCocktails = data.cocktails;
-                    renderCocktails();
-                } catch (error) {
-                    console.error('Error loading cocktails:', error);
-                    cocktailsGrid.innerHTML = '<div class="message message-error">Failed to load cocktails. Please try again.</div>';
-                }
-            }
-            
-            function renderCocktails() {
-                cocktailsGrid.innerHTML = '';
-                
-                if (availableCocktails.length === 0) {
-                    cocktailsGrid.innerHTML = '<div class="message">No cocktails found. Try adding more ingredients to your inventory!</div>';
-                    return;
-                }
-                
-                let filteredCocktails = availableCocktails;
-                
-                // Apply filter
-                if (cocktailFilter.value === 'can-make') {
-                    filteredCocktails = availableCocktails.filter(cocktail => cocktail.can_make);
-                } else if (cocktailFilter.value === 'missing-few') {
-                    filteredCocktails = availableCocktails.filter(cocktail => !cocktail.can_make && cocktail.missing.length <= 2);
-                }
-                
-                if (filteredCocktails.length === 0) {
-                    cocktailsGrid.innerHTML = '<div class="message">No cocktails found with the current filter. Try a different filter!</div>';
-                    return;
-                }
-                
-                filteredCocktails.forEach(cocktail => {
-                    const card = document.createElement('div');
-                    card.className = 'card';
-                    card.innerHTML = 
-                        <div class="card-image">
-                            <img src="${cocktail.image_url}" alt="${cocktail.name}">
-                        </div>
-                        <div class="card-content">
-                            <h3 class="card-title">${cocktail.name}</h3>
-                            <div class="card-status ${cocktail.can_make ? 'status-can-make' : 'status-missing'}">
-                                ${cocktail.can_make ? 'Can Make Now!' : 'Missing Ingredients'}
-                            </div>
-                            ${!cocktail.can_make ? <div class="missing-items">Missing: ${cocktail.missing.join(', ')}</div> : ''}
-                            <button class="btn btn-primary view-cocktail" data-id="${cocktail.id}">View Recipe</button>
-                        </div>
-                    ;
-                    cocktailsGrid.appendChild(card);
-                });
-                
-                // Add event listeners for view buttons
-                document.querySelectorAll('.view-cocktail').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const id = this.getAttribute('data-id');
-                        viewCocktailDetails(id);
-                    });
-                });
-            }
-            
-            async function viewCocktailDetails(id) {
-                try {
-                    cocktailDetail.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i></div>';
-                    showSection(cocktailDetailSection);
-                    
-                    const response = await fetch(${API_BASE_URL}/cocktails/details/${id}, {
-                        headers: getAuthHeader()
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('Failed to load cocktail details');
-                    }
-                    
-                    const cocktail = await response.json();
-                    
-                    currentCocktail = cocktail;
-                    renderCocktailDetails();
-                } catch (error) {
-                    console.error('Error loading cocktail details:', error);
-                    cocktailDetail.innerHTML = '<div class="message message-error">Failed to load cocktail details. Please try again.</div>';
-                }
-            }
-            
-            function renderCocktailDetails() {
-                if (!currentCocktail) {
-                    return;
-                }
-                
-                cocktailDetail.innerHTML = 
-                    <h2>${currentCocktail.name}</h2>
-                    <div class="card-status ${currentCocktail.can_make ? 'status-can-make' : 'status-missing'}">
-                        ${currentCocktail.can_make ? 'You can make this!' : 'Missing ingredients'}
-                    </div>
-                    
-                    <div class="cocktail-detail">
-                        <div class="cocktail-image">
-                            <img src="${currentCocktail.image_url}" alt="${currentCocktail.name}">
-                        </div>
-                        <div class="cocktail-info">
-                            <p><strong>Glass:</strong> ${currentCocktail.glass}</p>
-                            
-                            <div class="cocktail-ingredients">
-                                <h3>Ingredients:</h3>
-                                <ul>
-                                    ${currentCocktail.ingredients.map(ingredient => 
-                                        <li class="ingredient-item">
-                                            <span class="ingredient-status ${inventory.includes(ingredient.name) ? 'ingredient-available' : 'ingredient-missing'}">
-                                                ${inventory.includes(ingredient.name) ? '✓' : '✗'}
-                                            </span>
-                                            ${ingredient.measure ? ingredient.measure + ' ' : ''} ${ingredient.name}
-                                            ${!inventory.includes(ingredient.name) ? 
-                                                <button class="btn btn-small add-missing-ingredient" data-ingredient="${ingredient.name}">Add</button> : 
-                                                ''}
-                                        </li>
-                                    ).join('')}
-                                </ul>
-                            </div>
-                            
-                            <div class="cocktail-instructions">
-                                <h3>Instructions:</h3>
-                                <p>${currentCocktail.instructions}</p>
-                            </div>
-                        </div>
-                    </div>
-                ;
-                
-                // Add event listeners for adding missing ingredients
-                document.querySelectorAll('.add-missing-ingredient').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const ingredient = this.getAttribute('data-ingredient');
-                        addMissingIngredient(ingredient);
-                    });
-                });
-            }
-            
-            async function addMissingIngredient(ingredient) {
-                try {
-                    const response = await fetch(${API_BASE_URL}/inventory/, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            ...getAuthHeader()
-                        },
-                        body: JSON.stringify({
-                            name: ingredient
-                        })
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('Failed to add ingredient');
-                    }
-                    
-                    const data = await response.json();
-                    inventory = data.inventory;
-                    
-                    // Refresh cocktail details
-                    await viewCocktailDetails(currentCocktail.id);
-                    
-                    alert(Added ${ingredient} to your inventory!);
-                } catch (error) {
-                    console.error('Error adding ingredient:', error);
-                    alert('Failed to add ingredient. Please try again.');
-                }
-            }
-            
-            // Search Functions
-            async function searchCocktails() {
-                const query = searchQuery.value.trim();
-                
-                if (!query) {
-                    return;
-                }
-                
-                try {
-                    searchResults.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i></div>';
-                    
-                    const response = await fetch(${API_BASE_URL}/cocktails/search/, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            ...getAuthHeader()
-                        },
-                        body: JSON.stringify({
-                            query: query
-                        })
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('Failed to search cocktails');
-                    }
-                    
-                    const data = await response.json();
-                    renderSearchResults(data.cocktails);
-                } catch (error) {
-                    console.error('Error searching cocktails:', error);
-                    searchResults.innerHTML = '<div class="message message-error">Failed to search cocktails. Please try again.</div>';
-                }
-            }
-            
-            function renderSearchResults(results) {
-                searchResults.innerHTML = '';
-                
-                if (results.length === 0) {
-                    searchResults.innerHTML = '<div class="message">No cocktails found matching your search. Try a different query!</div>';
-                    return;
-                }
-                
-                results.forEach(cocktail => {
-                    const card = document.createElement('div');
-                    card.className = 'card';
-                    card.innerHTML = 
-                        <div class="card-image">
-                            <img src="${cocktail.image_url}" alt="${cocktail.name}">
-                        </div>
-                        <div class="card-content">
-                            <h3 class="card-title">${cocktail.name}</h3>
-                            <div class="card-status ${cocktail.can_make ? 'status-can-make' : 'status-missing'}">
-                                ${cocktail.can_make ? 'Can Make Now!' : 'Missing Ingredients'}
-                            </div>
-                            ${!cocktail.can_make ? <div class="missing-items">Missing: ${cocktail.missing.join(', ')}</div> : ''}
-                            <button class="btn btn-primary view-cocktail" data-id="${cocktail.id}">View Recipe</button>
-                        </div>
-                    ;
-                    searchResults.appendChild(card);
-                });
-                
-                // Add event listeners for view buttons
-                document.querySelectorAll('.view-cocktail').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const id = this.getAttribute('data-id');
-                        viewCocktailDetails(id);
-                    });
-                });
-            }
-            
-            // Scan Bottles Functions
-            bottleImage.addEventListener('change', function(e) {
-                if (e.target.files.length > 0) {
-                    fileName.textContent = e.target.files[0].name;
-                    scanControls.classList.remove('hidden');
-                } else {
-                    fileName.textContent = '';
-                    scanControls.classList.add('hidden');
-                }
-            });
-            
-            async function analyzeImage() {
-                if (!bottleImage.files || bottleImage.files.length === 0) {
-                    alert('Please select an image first.');
-                    return;
-                }
-                
-                try {
-                    const formData = new FormData();
-                    formData.append('file', bottleImage.files[0]);
-                    
-                    scanResults.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i></div>';
-                    
-                    const response = await fetch(${API_BASE_URL}/analyze-image/, {
-                        method: 'POST',
-                        headers: getAuthHeader(),
-                        body: formData
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('Failed to analyze image');
-                    }
-                    
-                    const data = await response.json();
-                    renderScanResults(data);
-                } catch (error) {
-                    console.error('Error analyzing image:', error);
-                    scanResults.innerHTML = '<div class="message message-error">Failed to analyze image. Please try again.</div>';
-                }
-            }
-            
-            function renderScanResults(data) {
-                if (!data.detections || data.detections.length === 0) {
-                    scanResults.innerHTML = 
-                        <div class="message">
-                            No alcohol items detected in the image. Try taking a clearer photo with good lighting and visible labels.
-                        </div>
-                    ;
-                    return;
-                }
-                
-                let html = 
-                    <h3>Detected Items</h3>
-                    <p>${data.message}</p>
-                    <div class="detected-items">
-                ;
-                
-                data.detections.forEach(detection => {
-                    const isInInventory = inventory.includes(detection.type);
-                    
-                    html += 
-                        <div class="inventory-item">
-                            ${detection.brand} (${detection.type})
-                            ${isInInventory ? 
-                                '<span class="item-status">✓ In Inventory</span>' : 
-                                <button class="btn btn-small add-detected-item" data-item="${detection.type}">Add to Inventory</button>
-                            }
-                        </div>
-                    ;
-                });
-                
-                html += '</div>';
-                scanResults.innerHTML = html;
-                
-                // Add event listeners for add buttons
-                document.querySelectorAll('.add-detected-item').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const item = this.getAttribute('data-item');
-                        addToInventoryFromScan(item);
-                    });
-                });
-            }
-            
-            async function addToInventoryFromScan(item) {
-                try {
-                    const response = await fetch(${API_BASE_URL}/inventory/, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            ...getAuthHeader()
-                        },
-                        body: JSON.stringify({
-                            name: item
-                        })
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('Failed to add item');
-                    }
-                    
-                    const data = await response.json();
-                    inventory = data.inventory;
-                    
-                    alert(Added ${item} to your inventory!);
-                    
-                    // Refresh scan results
-                    analyzeImage();
-                } catch (error) {
-                    console.error('Error adding item:', error);
-                    alert('Failed to add item. Please try again.');
-                }
-            }
-            
-            // Common Ingredients Modal Functions
-            async function loadCommonIngredients() {
-                try {
-                    const commonIngredientsModal = document.getElementById('common-ingredients-modal');
-                    const commonIngredientsList = document.getElementById('common-ingredients-list');
-                    
-                    commonIngredientsList.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i></div>';
-                    commonIngredientsModal.classList.remove('hidden');
-                    
-                    const response = await fetch(${API_BASE_URL}/ingredients/common/, {
-                        headers: getAuthHeader()
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('Failed to load common ingredients');
-                    }
-                    
-                    const data = await response.json();
-                    
-                    let html = '<ul>';
-                    data.forEach(ingredient => {
-                        const isInInventory = inventory.includes(ingredient);
-                        
-                        html += 
-                            <li>
-                                <input type="checkbox" id="ingredient-${ingredient}" ${isInInventory ? 'checked disabled' : ''}>
-                                <label for="ingredient-${ingredient}">${ingredient} ${isInInventory ? '(already in inventory)' : ''}</label>
-                            </li>
-                        ;
-                    });
-                    html += '</ul>';
-                    
-                    commonIngredientsList.innerHTML = html;
-                } catch (error) {
-                    console.error('Error loading common ingredients:', error);
-                    alert('Failed to load common ingredients. Please try again.');
-                }
-            }
-            
-            async function addSelectedCommonIngredients() {
-                const commonIngredientsModal = document.getElementById('common-ingredients-modal');
-                const selectedIngredients = [];
-                
-                document.querySelectorAll('#common-ingredients-list input[type="checkbox"]:checked:not([disabled])').forEach(checkbox => {
-                    selectedIngredients.push(checkbox.id.replace('ingredient-', ''));
-                });
-                
-                if (selectedIngredients.length === 0) {
-                    alert('Please select at least one ingredient.');
-                    return;
-                }
-                
-                try {
-                    const response = await fetch(${API_BASE_URL}/inventory/add-common/, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            ...getAuthHeader()
-                        },
-                        body: JSON.stringify(selectedIngredients)
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('Failed to add ingredients');
-                    }
-                    
-                    const data = await response.json();
-                    inventory = data.inventory;
-                    renderInventory();
-                    
-                    commonIngredientsModal.classList.add('hidden');
-                    alert(Added ${selectedIngredients.length} ingredients to your inventory!);
-                } catch (error) {
-                    console.error('Error adding common ingredients:', error);
-                    alert('Failed to add ingredients. Please try again.');
-                }
-            }
-            
-            // Event Listeners
-            logoutBtn.addEventListener('click', logout);
-            
-            addIngredientBtn.addEventListener('click', addToInventory);
-            addIngredientInput.addEventListener('keyup', function(e) {
-                if (e.key === 'Enter') {
-                    addToInventory();
-                }
-            });
-            
-            addCommonBtn.addEventListener('click', loadCommonIngredients);
-            document.getElementById('add-selected-common').addEventListener('click', addSelectedCommonIngredients);
-            document.querySelector('#common-ingredients-modal .close').addEventListener('click', function() {
-                document.getElementById('common-ingredients-modal').classList.add('hidden');
-            });
-            
-            refreshCocktailsBtn.addEventListener('click', loadAvailableCocktails);
-            cocktailFilter.addEventListener('change', renderCocktails);
-            
-            searchBtn.addEventListener('click', searchCocktails);
-            searchQuery.addEventListener('keyup', function(e) {
-                if (e.key === 'Enter') {
-                    searchCocktails();
-                }
-            });
-            
-            analyzeImageBtn.addEventListener('click', analyzeImage);
-            
-            // Run auth check and load initial data
-            checkAuth().then(authenticated => {
-                if (authenticated) {
-                    // Start with the inventory section
-                    showSection(inventorySection);
-                    loadInventory();
-                }
+    async function loadInventory() {
+        const res = await fetch(`${API_BASE}/inventory/`, { headers: headers() });
+        if (res.ok) {
+            const data = await res.json();
+            const list = document.getElementById('inventory-list');
+            list.innerHTML = '';
+            data.inventory.forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = item;
+                li.addEventListener('click', () => removeInventory(item));
+                list.appendChild(li);
             });
         }
+    }
+
+    async function addInventory(item) {
+        await fetch(`${API_BASE}/inventory/`, {
+            method: 'POST',
+            headers: headers(),
+            body: JSON.stringify({ name: item })
+        });
+        loadInventory();
+    }
+
+    async function removeInventory(item) {
+        await fetch(`${API_BASE}/inventory/${item}`, {
+            method: 'DELETE',
+            headers: headers()
+        });
+        loadInventory();
+    }
+
+    document.getElementById('add-ingredient-btn').addEventListener('click', () => {
+        const val = document.getElementById('add-ingredient').value.trim();
+        if (val) addInventory(val);
+    });
+
+    document.getElementById('search-btn').addEventListener('click', async () => {
+        const query = document.getElementById('search-input').value.trim();
+        const res = await fetch(`${API_BASE}/cocktails/search/`, {
+            method: 'POST',
+            headers: headers(),
+            body: JSON.stringify({ query })
+        });
+        const data = await res.json();
+        const results = document.getElementById('search-results');
+        results.innerHTML = data.cocktails.map(c => `<div>${c.name}</div>`).join('');
+    });
+
+    document.getElementById('analyze-btn').addEventListener('click', async () => {
+        const fileInput = document.getElementById('bottle-image');
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        const res = await fetch(`${API_BASE}/analyze-image/`, {
+            method: 'POST',
+            headers: { 'Authorization': `${authType} ${authToken}` },
+            body: formData
+        });
+        const data = await res.json();
+        document.getElementById('scan-results').textContent = JSON.stringify(data.detections);
+    });
+
+    // Barcode Scanner Logic
+    let scannerActive = false;
+    let lastCode = '';
+
+    document.getElementById('start-scanner').addEventListener('click', () => {
+        if (scannerActive) return;
+        scannerActive = true;
+        Quagga.init({
+            inputStream: {
+                type: "LiveStream",
+                target: document.getElementById('barcode-scanner')
+            },
+            decoder: {
+                readers: ["ean_reader", "code_128_reader"]
+            }
+        }, err => {
+            if (err) return console.error(err);
+            Quagga.start();
+        });
+
+        Quagga.onDetected(data => {
+            if (data.codeResult.code !== lastCode) {
+                lastCode = data.codeResult.code;
+                document.getElementById('barcode-result').textContent = `Detected: ${lastCode}`;
+                document.getElementById('add-barcode-to-inventory').classList.remove('hidden');
+            }
+        });
+    });
+
+    document.getElementById('stop-scanner').addEventListener('click', () => {
+        Quagga.stop();
+        scannerActive = false;
+        document.getElementById('barcode-result').textContent = 'Scanner stopped.';
+        document.getElementById('add-barcode-to-inventory').classList.add('hidden');
+    });
+
+    document.getElementById('add-barcode-to-inventory').addEventListener('click', async () => {
+        if (lastCode) {
+            await addInventory(lastCode);
+            alert(`Added ${lastCode} to inventory!`);
+            document.getElementById('add-barcode-to-inventory').classList.add('hidden');
+        }
+    });
+
+    // Initialize
+    getUser();
+    loadInventory();
+    showSection('inventory');
     </script>
 </body>
 </html>
