@@ -2,50 +2,64 @@ import os
 import json
 import tempfile
 from datetime import datetime, timedelta
-from typing import List, Dict, Optional
+from typing import List, Optional, Dict, Any
 
-import httpx
-from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, status, Body
+import requests
+
+from fastapi import (
+    FastAPI, Depends, HTTPException, status, File, UploadFile, Body
+)
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+
+from pydantic import BaseModel, EmailStr
 from sqlalchemy import create_engine, Column, String, Integer, Boolean, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session, relationship
+
+from jose import JWTError, jwt
 from passlib.context import CryptContext
-from jose import jwt, JWTError
-from pydantic import BaseModel
-from pathlib import Path
 
-# ---------------------- CONFIG ----------------------
+# === Google Vision Setup ===
+vision_available = False
+try:
+    from google.cloud import vision
 
+    if 'GOOGLE_APPLICATION_CREDENTIALS_JSON' in os.environ:
+        credentials_json = os.environ['GOOGLE_APPLICATION_CREDENTIALS_JSON']
+        fd, temp_credentials_file = tempfile.mkstemp()
+        with open(temp_credentials_file, 'w') as f:
+            f.write(credentials_json)
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = temp_credentials_file
+
+    vision_client = vision.ImageAnnotatorClient()
+    vision_available = True
+except ImportError:
+    print("Google Cloud Vision not available.")
+
+# === App Setup ===
 app = FastAPI(
     title="Booze Buddy API",
-    description="Optimized API for managing bar inventory and discovering cocktails",
-    version="2.0.0"
+    description="API for managing bar inventory and cocktails",
+    version="2.1.0"
 )
 
-# Static files
-if not os.path.exists('static'):
-    raise RuntimeError("Missing 'static' directory")
-
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# CORS
-origins = os.getenv("CORS_ALLOW_ORIGINS", "http://localhost,https://www.boozebuddy.online").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Database setup
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./boozebuddy.db")
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {})
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# === Database Setup ===
+DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./boozebuddy.db")
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 Base = declarative_base()
 
 def get_db():
@@ -55,33 +69,32 @@ def get_db():
     finally:
         db.close()
 
-# ---------------------- MODELS ----------------------
-
+# === Models ===
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True)
-    email = Column(String, unique=True, index=True)
-    hashed_password = Column(String)
+    username = Column(String, unique=True, index=True, nullable=False)
+    email = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
     inventory_items = relationship("InventoryItem", back_populates="user")
 
 class InventoryItem(Base):
     __tablename__ = "inventory_items"
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    name = Column(String, index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"))
     user = relationship("User", back_populates="inventory_items")
 
 Base.metadata.create_all(bind=engine)
 
-# ---------------------- AUTH ----------------------
+# === Auth Setup ===
+SECRET_KEY = os.environ.get("SECRET_KEY", "temporarysecretkey")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-SECRET_KEY = os.getenv("SECRET_KEY", "temporarysecretkey")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
@@ -89,44 +102,42 @@ def verify_password(plain_password, hashed_password):
 def get_password_hash(password):
     return pwd_context.hash(password)
 
-def get_user(db: Session, username: str):
-    return db.query(User).filter(User.username == username).first()
-
-def authenticate_user(db: Session, username: str, password: str):
-    user = get_user(db, username)
-    if not user or not verify_password(password, user.hashed_password):
-        return False
-    return user
-
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-    user = get_user(db, username=username)
-    if user is None:
-        raise credentials_exception
+def get_user(db: Session, username: str):
+    return db.query(User).filter(User.username == username).first()
+
+def authenticate_user(db: Session, username: str, password: str):
+    user = get_user(db, username)
+    if not user or not verify_password(password, user.hashed_password):
+        return None
     return user
 
-# ---------------------- SCHEMAS ----------------------
+async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if username is None:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    user = get_user(db, username)
+    if user is None:
+        raise HTTPException(status_code=401, detail="User not found")
+    return user
+
+# === Pydantic Schemas ===
+class Token(BaseModel):
+    access_token: str
+    token_type: str
 
 class UserCreate(BaseModel):
     username: str
-    email: str
+    email: EmailStr
     password: str
 
 class UserResponse(BaseModel):
@@ -135,9 +146,8 @@ class UserResponse(BaseModel):
     email: str
     is_active: bool
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str
+    class Config:
+        orm_mode = True
 
 class InventoryItemCreate(BaseModel):
     name: str
@@ -146,119 +156,146 @@ class InventoryResponse(BaseModel):
     inventory: List[str]
     message: str
 
-# ---------------------- HELPERS ----------------------
+class CocktailIngredient(BaseModel):
+    name: str
+    measure: Optional[str]
 
-def get_current_inventory(db: Session, user_id: int) -> List[str]:
-    items = db.query(InventoryItem).filter(InventoryItem.user_id == user_id).all()
-    return [item.name for item in items]
+class CocktailDetails(BaseModel):
+    id: str
+    name: str
+    instructions: str
+    image_url: str
+    glass: str
+    ingredients: List[CocktailIngredient]
+    can_make: bool
+    missing: List[str]
 
-def serve_static_html(file_path: str, route_name: str):
-    html_file = Path(file_path)
-    if html_file.exists():
-        return HTMLResponse(content=html_file.read_text(), status_code=200)
-    else:
-        return HTMLResponse(
-            content=f"<h1>500 Internal Server Error</h1><p>{route_name} file '{file_path}' not found on server.</p>",
-            status_code=500
-        )
+# === BoozeBuddy Cocktail Logic ===
+class BoozeBuddy:
+    def __init__(self):
+        self.api_base = "https://www.thecocktaildb.com/api/json/v2/961249867/"
+        self.cache = {}
 
-# ---------------------- ROUTES ----------------------
+    def api_request(self, endpoint: str, params: Dict[str, str] = None):
+        cache_key = f"{endpoint}-{json.dumps(params)}"
+        if cache_key in self.cache:
+            return self.cache[cache_key]
+        try:
+            response = requests.get(self.api_base + endpoint, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            self.cache[cache_key] = data
+            return data
+        except requests.RequestException:
+            return {}
 
-@app.get("/", response_class=HTMLResponse)
-async def read_root():
-    return serve_static_html("static/index.html", "/")
+    def get_available_cocktails(self, inventory: List[str]):
+        cocktails = {}
+        for ingredient in inventory:
+            data = self.api_request("filter.php", {"i": ingredient})
+            for drink in data.get("drinks", []):
+                cocktails[drink["idDrink"]] = drink["strDrink"]
+        return cocktails
 
-@app.get("/login", response_class=HTMLResponse)
-async def read_login():
-    return serve_static_html("static/login.html", "/login")
+    def get_cocktail_details(self, cocktail_id: str):
+        data = self.api_request("lookup.php", {"i": cocktail_id})
+        return data.get("drinks", [])[0] if data.get("drinks") else None
 
-@app.get("/app", response_class=HTMLResponse)
-async def read_app():
-    return serve_static_html("static/app.html", "/app")
+boozebuddy = BoozeBuddy()
 
+# === Routes ===
 @app.get("/health")
-def health_check():
-    return {
-        "status": "healthy",
-        "version": "2.0.0",
-        "timestamp": datetime.utcnow().isoformat()
-    }
+def health():
+    return {"status": "ok", "time": datetime.utcnow()}
 
 @app.post("/register", response_model=UserResponse)
-def register_user(user: UserCreate, db: Session = Depends(get_db)):
-    if db.query(User).filter(User.username == user.username).first():
-        raise HTTPException(status_code=400, detail="Username already registered")
-    if db.query(User).filter(User.email == user.email).first():
-        raise HTTPException(status_code=400, detail="Email already registered")
-    new_user = User(
+def register(user: UserCreate, db: Session = Depends(get_db)):
+    if db.query(User).filter((User.username == user.username) | (User.email == user.email)).first():
+        raise HTTPException(status_code=400, detail="Username or email already registered")
+    db_user = User(
         username=user.username,
         email=user.email,
         hashed_password=get_password_hash(user.password)
     )
-    db.add(new_user)
+    db.add(db_user)
     db.commit()
-    db.refresh(new_user)
-    return new_user
+    db.refresh(db_user)
+    return db_user
 
 @app.post("/token", response_model=Token)
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    access_token = create_access_token(
-        data={"sub": user.username}, 
-        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
+    token = create_access_token({"sub": user.username}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    return {"access_token": token, "token_type": "bearer"}
 
 @app.get("/users/me", response_model=UserResponse)
-async def read_users_me(current_user: User = Depends(get_current_user)):
+def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+@app.get("/", response_class=HTMLResponse)
+def serve_index():
+    return FileResponse("static/index.html")
+
+@app.get("/login", response_class=HTMLResponse)
+def serve_login():
+    return FileResponse("static/login.html")
+
+@app.get("/app", response_class=HTMLResponse)
+def serve_app():
+    return FileResponse("static/app.html")
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    return FileResponse("static/favicon.ico")
 
 @app.get("/inventory/", response_model=InventoryResponse)
 def get_inventory(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    inventory_items = get_current_inventory(db, current_user.id)
-    return {"inventory": sorted(inventory_items), "message": f"{len(inventory_items)} items in inventory"}
+    items = db.query(InventoryItem).filter(InventoryItem.user_id == current_user.id).all()
+    return {"inventory": [item.name for item in items], "message": f"{len(items)} items found"}
 
 @app.post("/inventory/", response_model=InventoryResponse)
-def add_to_inventory(item: InventoryItemCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if not db.query(InventoryItem).filter(InventoryItem.name == item.name.lower(), InventoryItem.user_id == current_user.id).first():
-        db.add(InventoryItem(name=item.name.lower(), user_id=current_user.id))
+def add_inventory(item: InventoryItemCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not db.query(InventoryItem).filter(InventoryItem.name == item.name, InventoryItem.user_id == current_user.id).first():
+        db.add(InventoryItem(name=item.name, user_id=current_user.id))
         db.commit()
-    inventory_items = get_current_inventory(db, current_user.id)
-    return {"inventory": sorted(inventory_items), "message": f"Added {item.name} to inventory"}
+    items = db.query(InventoryItem).filter(InventoryItem.user_id == current_user.id).all()
+    return {"inventory": [i.name for i in items], "message": f"Added {item.name}"}
 
 @app.delete("/inventory/{item_name}", response_model=InventoryResponse)
-def remove_from_inventory(item_name: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    item = db.query(InventoryItem).filter(InventoryItem.name == item_name.lower(), InventoryItem.user_id == current_user.id).first()
+def delete_inventory(item_name: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    item = db.query(InventoryItem).filter(InventoryItem.name == item_name, InventoryItem.user_id == current_user.id).first()
     if item:
         db.delete(item)
         db.commit()
-        message = f"Removed {item_name}"
-    else:
-        message = f"{item_name} not found"
-    inventory_items = get_current_inventory(db, current_user.id)
-    return {"inventory": sorted(inventory_items), "message": message}
+    items = db.query(InventoryItem).filter(InventoryItem.user_id == current_user.id).all()
+    return {"inventory": [i.name for i in items], "message": f"Removed {item_name}"}
 
-# ---------------------- EXTERNAL API (Optimized) ----------------------
+@app.get("/cocktails/available/", response_model=List[str])
+def available_cocktails(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    inventory = [item.name for item in db.query(InventoryItem).filter(InventoryItem.user_id == current_user.id).all()]
+    cocktails = boozebuddy.get_available_cocktails(inventory)
+    return list(cocktails.values())
 
-async def fetch_cocktail_data(endpoint: str, params: Dict = None) -> Dict:
-    async with httpx.AsyncClient(timeout=10) as client:
-        url = f"https://www.thecocktaildb.com/api/json/v2/961249867/{endpoint}"
-        try:
-            response = await client.get(url, params=params)
-            response.raise_for_status()
-            return response.json()
-        except httpx.HTTPError as e:
-            print(f"Error fetching data: {e}")
-            return {}
-
-# ---------------------- RUN ----------------------
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+@app.get("/cocktails/details/{cocktail_id}", response_model=CocktailDetails)
+def cocktail_details(cocktail_id: str):
+    details = boozebuddy.get_cocktail_details(cocktail_id)
+    if not details:
+        raise HTTPException(status_code=404, detail="Cocktail not found")
+    ingredients = []
+    for i in range(1, 16):
+        name = details.get(f"strIngredient{i}")
+        measure = details.get(f"strMeasure{i}")
+        if name:
+            ingredients.append(CocktailIngredient(name=name, measure=measure))
+    return CocktailDetails(
+        id=cocktail_id,
+        name=details["strDrink"],
+        instructions=details["strInstructions"],
+        image_url=details["strDrinkThumb"],
+        glass=details["strGlass"],
+        ingredients=ingredients,
+        can_make=False,
+        missing=[]
+    )
