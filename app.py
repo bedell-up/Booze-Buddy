@@ -11,6 +11,29 @@ import os
 import uuid
 import shutil
 
+from google.cloud import vision
+from google.oauth2 import service_account
+
+import io
+
+# Setup Google Cloud Vision
+GCP_CREDENTIALS_JSON = os.environ.get("GCP_CREDENTIALS_JSON")
+if not GCP_CREDENTIALS_JSON:
+    raise RuntimeError("Missing Google Cloud credentials")
+
+credentials = service_account.Credentials.from_service_account_info(
+    json.loads(GCP_CREDENTIALS_JSON)
+)
+vision_client = vision.ImageAnnotatorClient(credentials=credentials)
+
+@app.post("/analyze-image/")
+async def analyze_image(file: UploadFile = File(...)):
+    content = await file.read()
+    image = vision.Image(content=content)
+    response = vision_client.label_detection(image=image)
+    labels = [label.description for label in response.label_annotations]
+    return {"labels": labels}
+
 # === CONFIG ===
 DATABASE_URL = os.environ.get("DATABASE_URL")
 SECRET_KEY = os.environ.get("SECRET_KEY", "devsecret")
