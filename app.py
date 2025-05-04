@@ -42,14 +42,6 @@ credentials = service_account.Credentials.from_service_account_info(
 )
 vision_client = vision.ImageAnnotatorClient(credentials=credentials)
 
-@app.post("/analyze-image/")
-async def analyze_image(file: UploadFile = File(...)):
-    content = await file.read()
-    image = vision.Image(content=content)
-    response = vision_client.label_detection(image=image)
-    labels = [label.description for label in response.label_annotations]
-    return {"labels": labels}
-
 # === CONFIG ===
 DATABASE_URL = os.environ.get("DATABASE_URL")
 SECRET_KEY = os.environ.get("SECRET_KEY", "devsecret")
@@ -147,10 +139,26 @@ def delete_inventory(item_id: int, token: str, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Item deleted"}
 
+from fastapi import UploadFile, File
+
 @app.post("/analyze-image/")
 async def analyze_image(file: UploadFile = File(...)):
+    from google.cloud import vision
+    import io
+
+    # Read image content
     content = await file.read()
+
+    # Initialize Google Cloud Vision client
+    client = vision.ImageAnnotatorClient()
     image = vision.Image(content=content)
-    response = vision_client.label_detection(image=image)
-    labels = [label.description for label in response.label_annotations]
-    return {"labels": labels}
+
+    # Run label detection
+    response = client.label_detection(image=image)
+    labels = response.label_annotations
+
+    # Extract label descriptions
+    label_descriptions = [label.description for label in labels]
+
+    return {"labels": label_descriptions}
+
