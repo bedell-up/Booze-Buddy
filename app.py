@@ -162,3 +162,7 @@ def login_page():
 @app.get("/app")
 def app_page():
     return FileResponse("static/app.html")
+
+@app.get("/favicon.ico")
+def favicon():
+    return FileResponse("static/favicon.ico")
