@@ -29,13 +29,18 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
     body: formData
 });
 
-const text = await res.text(); // always parse as text
-console.log("Response:", text);
+const text = await res.text();
+console.log("Raw response text:", text);
 
 if (res.ok) {
-    const data = JSON.parse(text);
-    localStorage.setItem('token', data.access_token);
-    window.location.href = '/app.html';
+    try {
+        const data = JSON.parse(text);
+        localStorage.setItem('token', data.access_token);
+        window.location.href = '/app.html';
+    } catch (err) {
+        console.error('Failed to parse JSON:', err);
+        alert('Login succeeded but server gave invalid response.');
+    }
 } else {
     alert('Login failed: ' + text);
 }
