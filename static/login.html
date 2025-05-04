@@ -14,8 +14,8 @@
 </form>
     <p>Or <a href="/register.html">register here</a></p>
 
-    <script>
-    document.getElementById('loginForm').addEventListener('submit', async e => {
+<script>
+document.getElementById('loginForm').addEventListener('submit', async e => {
     e.preventDefault();
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
@@ -37,6 +37,6 @@
         alert('Login failed');
     }
 });
-    </script>
+</script>
 </body>
 </html>
